@@ -5,104 +5,72 @@ using TMPro;
 public class PowerBox : Interactable
 {
     [Header("State")]
-    public bool hasFuse = false;
+    public bool hasFuse = false; 
     public bool wiresCorrect = false;
     public bool powerOn = false;
 
     [Header("References")]
-    public Animator gateAnimator;       // your gate
-    public GameObject wirePuzzleUI;     // UI panel for wiring
-    public TextMeshProUGUI statusText;  // shows "No fuse / Wrong wires / Power ON"
+    public GateController farmGate;
+    public Animator gateAnimator;       
+    public GameObject wirePuzzleUI;     
+    public TextMeshProUGUI statusText;  
+    
+    private FarmLightController farmLight; 
 
     void Start() 
     { 
-        // 預設提示（雖然會被 Interact 覆蓋，但留著無妨）
         hintMessage = "Press E to open power box"; 
         if(wirePuzzleUI != null) wirePuzzleUI.SetActive(false);
+        
+        // 自動尋找燈光
+        farmLight = FindObjectOfType<FarmLightController>();
+        if (farmLight != null) farmLight.TurnOffLight();
     }
 
-        void Update()
+    void Update()
     {
-        // 如果還沒插入保險絲
-        if (!hasFuse)
+        if (!wiresCorrect)
         {
-            if (FusePickup.playerHasFuse)
-            {
-                // 手上有保險絲，提示玩家插入
-                hintMessage = "Press E to insert Fuse";
-            }
-            else
-            {
-                // 手上沒保險絲，提示玩家去尋找
-                hintMessage = "Needs a Fuse (Find one first)";
-            }
+            if (FusePickup.playerHasFuse) hintMessage = "Press E to open power box (Fuse ready)";
+            else hintMessage = "Press E to open power box (Need Fuse)";
         }
-        // 如果插了保險絲，但線沒接好
-        else if (!wiresCorrect)
-        {
-            hintMessage = "Press E to repair wiring";
-        }
-        // 如果都弄好了
         else
         {
-            hintMessage = "Press E to turn on Power";
+            hintMessage = powerOn ? "Power is ON" : "Press E to open power box";
         }
     }
 
     public override void Interact()
     {
-        // Step 1: 需要保險絲
-        if (!hasFuse)
-        {
-            if (FusePickup.playerHasFuse)
-            {
-                // 玩家有保險絲，按下 E 執行插入
-                hasFuse = true;
-                statusText.text = "Fuse inserted. Wires needed.";
-                Debug.Log("Fuse inserted into box.");
-            }
-            else
-            {
-                // 玩家沒有保險絲，按下 E 提示找不到
-                statusText.text = "You need a fuse first!";
-                Debug.Log("You need a fuse first!");
-            }
-            return;
-        }
+        // 如果通電了，玩家按 E 就只是單純打開 UI 看，或者不給按
+        if (powerOn) return; 
 
-        // Step 2: 接線解謎
-        if (!wiresCorrect)
-        {
-            wirePuzzleUI.SetActive(true); 
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-            statusText.text = "Inserted. Now connect the wires!";
-            return;
-        }
-
-        // Step 3: 切換電源
-        powerOn = !powerOn;
-        statusText.text = powerOn ? "POWER ON" : "POWER OFF";
-        Debug.Log("Power is now: " + powerOn);
-
-        if (powerOn && gateAnimator != null)
-        {
-            gateAnimator.SetBool("IsOpen", false);
-            Debug.Log("Gate closing!");
-        }
+        // 還沒通電，打開 UI 讓玩家去解謎
+        if (wirePuzzleUI != null) wirePuzzleUI.SetActive(true); 
+        if (statusText != null) statusText.text = ""; 
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
-    // Called by the wiring puzzle when player solves it
-    public void SetWiresCorrect()
+    // 💡 這是給 WirePuzzle 呼叫的通電函數
+    public void TurnOnPower()
     {
+        if (powerOn) return; 
+
+        powerOn = true;
         wiresCorrect = true;
-        wirePuzzleUI.SetActive(false);
         
-        // 💡 關閉 UI 後，重新鎖定滑鼠，讓玩家恢復第一人稱視角
+        if (farmLight != null) farmLight.TurnOnLight();
+
+        if (farmGate != null) 
+        {
+            farmGate.CloseGate();
+        }
+
+        if (wirePuzzleUI != null) wirePuzzleUI.SetActive(false);
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         
-        statusText.text = "Wires correct. Flip switch!";
-        Debug.Log("Wires correct. Flip switch!");
+        if (statusText != null) statusText.text = "POWER ON";
     }
 }

@@ -6,46 +6,46 @@ public class GateController : MonoBehaviour
     public Transform leftGate;   
     public Transform rightGate;  
     
-    public float slideDistance = 3f; // 門往兩側滑開的距離
-    public float speed = 3f;
+    [Header("Rotation Settings")]
+    public float openAngle = 90f;    // 門打開時旋轉的角度 (90度就是往外推開)
+    public float speed = 100f;       // 門旋轉的速度
 
-    private Vector3 leftClosedPos;
-    private Vector3 rightClosedPos;
+    private Quaternion leftClosedRot;
+    private Quaternion rightClosedRot;
+    private Quaternion leftOpenRot;
+    private Quaternion rightOpenRot;
+
     private bool isOpening = false;
     private bool isClosing = false;
 
     void Start()
     {
-        // 記錄兩扇門一開始的關閉位置
-        if (leftGate != null) leftClosedPos = leftGate.localPosition;
-        if (rightGate != null) rightClosedPos = rightGate.localPosition;
+        if (leftGate != null) 
+        {
+            leftClosedRot = leftGate.localRotation;
+            leftOpenRot = leftClosedRot * Quaternion.Euler(0, -openAngle, 0); 
+        }
+        
+        if (rightGate != null) 
+        {
+            rightClosedRot = rightGate.localRotation;
+            rightOpenRot = rightClosedRot * Quaternion.Euler(0, openAngle, 0); 
+        }
 
-        // 💡 讓門在一開始遊戲時，就直接處於「打開」的狀態
-        if (leftGate != null) leftGate.localPosition = leftClosedPos + new Vector3(-slideDistance, 0, 0);
-        if (rightGate != null) rightGate.localPosition = rightClosedPos + new Vector3(slideDistance, 0, 0);
+        if (leftGate != null) leftGate.localRotation = leftOpenRot;
+        if (rightGate != null) rightGate.localRotation = rightOpenRot;
     }
-    
     void Update()
     {
         if (isOpening)
         {
-            // 左門往左移，右門往右移
-            MoveGate(leftGate, leftClosedPos + new Vector3(-slideDistance, 0, 0));
-            MoveGate(rightGate, rightClosedPos + new Vector3(slideDistance, 0, 0));
+            if (leftGate != null) leftGate.localRotation = Quaternion.RotateTowards(leftGate.localRotation, leftOpenRot, speed * Time.deltaTime);
+            if (rightGate != null) rightGate.localRotation = Quaternion.RotateTowards(rightGate.localRotation, rightOpenRot, speed * Time.deltaTime);
         }
         else if (isClosing)
         {
-            // 回到原本關閉的位置
-            MoveGate(leftGate, leftClosedPos);
-            MoveGate(rightGate, rightClosedPos);
-        }
-    }
-
-    private void MoveGate(Transform gate, Vector3 targetPos)
-    {
-        if (gate != null)
-        {
-            gate.localPosition = Vector3.MoveTowards(gate.localPosition, targetPos, speed * Time.deltaTime);
+            if (leftGate != null) leftGate.localRotation = Quaternion.RotateTowards(leftGate.localRotation, leftClosedRot, speed * Time.deltaTime);
+            if (rightGate != null) rightGate.localRotation = Quaternion.RotateTowards(rightGate.localRotation, rightClosedRot, speed * Time.deltaTime);
         }
     }
 

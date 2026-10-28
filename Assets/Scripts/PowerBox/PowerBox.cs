@@ -66,6 +66,11 @@ public class PowerBox : Interactable
         powerOn = true;
         wiresCorrect = true;
 
+        // Farm Chaos: power back on -> every electric pen gate swings shut
+        ElectricGate.SetPower(true);
+        
+        if (farmLight != null) farmLight.TurnOnLight();
+
         if (audioSource != null)
         {
             if (switchClickSound != null) audioSource.PlayOneShot(switchClickSound);

@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d18bddb33adba74cb01e235edd30ffd, type: 3}
+  m_Name: DayLightingSnapshot
+  m_EditorClassIdentifier: Assembly-CSharp-Editor::FarmDaySnapshot
+  sunColor: {r: 0.8509804, g: 0.8509804, b: 0.8509804, a: 1}
+  sunIntensity: 0.5
+  sunRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  ambientMode: 0
+  ambientSky: {r: 0.212, g: 0.227, b: 0.259, a: 1}
+  ambientEquator: {r: 0.114, g: 0.125, b: 0.133, a: 1}
+  ambientGround: {r: 0.047, g: 0.043, b: 0.035, a: 1}
+  ambientLight: {r: 0.212, g: 0.227, b: 0.259, a: 1}
+  ambientIntensity: 1
+  fog: 0
+  camClearFlags: 1
+  camBackground: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  camPostProcessing: 0
+  skybox: {fileID: 0}

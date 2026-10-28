@@ -33,12 +33,15 @@ public class ShopManager : MonoBehaviour
 
     void Start()
     {
+        // Farm Chaos: coins live in the round's CoinWallet when there is one
+        if (CoinWallet.Exists) CoinWallet.Changed += _ => UpdateCoinUI();
         UpdateCoinUI();
         if (itemDetailPopup != null) itemDetailPopup.SetActive(false);
     }
 
     public void UpdateCoinUI()
     {
+        if (CoinWallet.Exists) playerCoins = CoinWallet.Coins;
         if (coinText != null)
             coinText.text = playerCoins.ToString(); 
     }
@@ -74,13 +77,22 @@ public class ShopManager : MonoBehaviour
 
     public void ConfirmPurchase()
     {
-        if (playerCoins >= currentPrice)
+        // Farm Chaos: no room in the item bar -> don't take the coins
+        if (Inventory.Instance != null && !Inventory.Instance.CanAdd(currentItemName))
         {
-            playerCoins -= currentPrice;
+            if (popupPrice != null) popupPrice.text = "<color=red>Your pockets are full!</color>";
+            return;
+        }
+
+        bool paid = CoinWallet.Exists ? CoinWallet.TrySpend(currentPrice) : playerCoins >= currentPrice;
+        if (paid)
+        {
+            if (!CoinWallet.Exists) playerCoins -= currentPrice;
             UpdateCoinUI();
             Debug.Log("Successfully bought: " + currentItemName);
             
-            // Add logic to give the item to the player here
+            // Farm Chaos: the item goes into the player's item bar
+            if (Inventory.Instance != null) Inventory.Instance.Add(currentItemName, popupIcon != null ? popupIcon.sprite : null);
 
             ClosePopup();
         }

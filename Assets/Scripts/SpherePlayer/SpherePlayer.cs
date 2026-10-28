@@ -41,6 +41,9 @@ public class SpherePlayer : MonoBehaviour
         Vector2 stick = MobileJoystick.Value;
         moveInput = Vector2.ClampMagnitude(kb + stick, 1f);
 
+        // shop / wiring puzzle open -> stand still
+        if (ProximityInteractor.UIOpen) { moveInput = Vector2.zero; MobileJoystick.ConsumeJump(); return; }
+
         if (Input.GetKeyDown(KeyCode.Space) || MobileJoystick.ConsumeJump()) jumpQueued = true;
     }
 

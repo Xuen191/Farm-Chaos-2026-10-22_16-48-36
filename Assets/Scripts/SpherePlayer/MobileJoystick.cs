@@ -60,9 +60,24 @@ public class MobileJoystick : MonoBehaviour
         return Vector2.Distance(screenPos, centre) <= r;
     }
 
+    static bool OverUI(int pointerId = -1)
+    {
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        if (es == null) return false;
+        return pointerId >= 0 ? es.IsPointerOverGameObject(pointerId) : es.IsPointerOverGameObject();
+    }
+
     void Update()
     {
         Vector2 look = Vector2.zero;
+
+        // a full-screen panel (shop, wiring puzzle) is open: controls off
+        if (ProximityInteractor.UIOpen)
+        {
+            if (moveFinger != -1 || mouseMoving) { moveFinger = -1; mouseMoving = false; End(); }
+            lookFinger = -1; mouseLooking = false; LookDelta = Vector2.zero; jumpFlag = false;
+            return;
+        }
 
         if (Input.touchCount > 0)
         {
@@ -72,6 +87,7 @@ public class MobileJoystick : MonoBehaviour
                 var t = Input.GetTouch(i);
                 if (t.phase == TouchPhase.Began)
                 {
+                    if (OverUI(t.fingerId)) continue;   // tapping a UI button (e.g. USE)
                     if (t.position.x < Screen.width * 0.5f)
                     {
                         if (moveFinger == -1) { moveFinger = t.fingerId; Begin(t.position); }
@@ -99,7 +115,7 @@ public class MobileJoystick : MonoBehaviour
 
             // left mouse = a fake finger (editor / Device Simulator)
             Vector2 mp = Input.mousePosition;
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetMouseButtonDown(0) && !OverUI())
             {
                 if (mp.x < Screen.width * 0.5f) { mouseMoving = true; Begin(mp); }
                 else if (OnJumpButton(mp)) Jump();

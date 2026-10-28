@@ -8,6 +8,9 @@ using UnityEngine.Rendering;
 
 public class DawnLighting : MonoBehaviour
 {
+    /// <summary>0 = full night, 1 = sunrise. Other scripts (PowerLamps) use it.</summary>
+    public static float Amount { get; private set; }
+
     [Tooltip("In-game time the sky starts to brighten, in minutes after 11 PM (330 = 4:30 AM)")]
     public float dawnStartMinutes = 330f;
 
@@ -28,7 +31,7 @@ public class DawnLighting : MonoBehaviour
     readonly List<(Light l, float i0)> pointLights = new List<(Light, float)>();
     ParticleSystem fireflies; float fireflyRate0;
     MaterialPropertyBlock mpb;
-    float lastApplied = -1f;
+    float lastApplied = -1f, lastDim = -1f;
     bool active;
 
     void Start()
@@ -48,6 +51,7 @@ public class DawnLighting : MonoBehaviour
         foreach (var r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
         {
             var m = r.sharedMaterial; if (m == null) continue;
+            if (PowerLamps.IsElectric(r.transform)) continue;   // electric lights are handled by PowerLamps
             string n = m.name;
             if (n.StartsWith("Mat_lamp_glow") || (n == "Mat_lamp" && m.IsKeywordEnabled("_EMISSION")))
             {
@@ -66,6 +70,7 @@ public class DawnLighting : MonoBehaviour
             }
         }
         foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+            if (!PowerLamps.IsElectric(l.transform))
             if (l.type == LightType.Point) pointLights.Add((l, l.intensity));
 
         var ff = night.transform.Find("Fireflies");
@@ -78,19 +83,23 @@ public class DawnLighting : MonoBehaviour
         if (clock == null) { clock = RoundClock.Instance; if (clock == null) return; }
 
         float d = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(dawnStartMinutes, clock.TotalGameMinutes, clock.GameMinutes));
-        if (Mathf.Abs(d - lastApplied) < 0.002f) return;
-        lastApplied = d;
+        Amount = d;
+        // power cut darkens the whole farm (less so once the sun is up)
+        float dim = Mathf.Lerp(PowerLamps.SceneDim, 1f, d);
+        if (Mathf.Abs(d - lastApplied) < 0.002f && Mathf.Abs(dim - lastDim) < 0.002f) return;
+        lastApplied = d; lastDim = dim;
 
         if (sun != null)
         {
             sun.color = Color.Lerp(sunC0, sunColor, d);
-            sun.intensity = Mathf.Lerp(sunI0, sunIntensity, d);
+            sun.intensity = Mathf.Lerp(sunI0, sunIntensity, d) * Mathf.Lerp(0.55f, 1f, Mathf.InverseLerp(0.1f, 1f, dim));
             sun.transform.rotation = Quaternion.Slerp(sunR0, Quaternion.Euler(sunAngles), d);
         }
-        if (cam != null) cam.backgroundColor = Color.Lerp(cam0, skyColor, d);
-        RenderSettings.ambientSkyColor = Color.Lerp(amb0Sky, ambientSky, d);
-        RenderSettings.ambientEquatorColor = Color.Lerp(amb0Eq, ambientEquator, d);
-        RenderSettings.ambientGroundColor = Color.Lerp(amb0Gr, ambientGround, d);
+        if (cam != null) cam.backgroundColor = Color.Lerp(cam0, skyColor, d) * Mathf.Lerp(0.6f, 1f, dim);
+        RenderSettings.ambientSkyColor = Color.Lerp(amb0Sky, ambientSky, d) * dim;
+        RenderSettings.ambientEquatorColor = Color.Lerp(amb0Eq, ambientEquator, d) * dim;
+        RenderSettings.ambientGroundColor = Color.Lerp(amb0Gr, ambientGround, d) * dim;
+        DynamicGI.UpdateEnvironment();   // make the new ambient colours actually show up
 
         foreach (var f in fades)
         {

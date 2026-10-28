@@ -14,6 +14,12 @@ public class PowerBox : Interactable
     public Animator gateAnimator;       
     public GameObject wirePuzzleUI;     
     public TextMeshProUGUI statusText;  
+
+    [Header("Audio Settings")]
+    public AudioSource audioSource;    
+    public AudioClip powerOnSound; 
+    public AudioClip switchClickSound;
+    public AudioClip openBoxSound;   
     
     private FarmLightController farmLight; 
 
@@ -22,7 +28,7 @@ public class PowerBox : Interactable
         hintMessage = "Press E to open power box"; 
         if(wirePuzzleUI != null) wirePuzzleUI.SetActive(false);
         
-        // 自動尋找燈光
+      
         farmLight = FindObjectOfType<FarmLightController>();
         if (farmLight != null) farmLight.TurnOffLight();
     }
@@ -42,35 +48,38 @@ public class PowerBox : Interactable
 
     public override void Interact()
     {
-        // 如果通電了，玩家按 E 就只是單純打開 UI 看，或者不給按
         if (powerOn) return; 
-
-        // 還沒通電，打開 UI 讓玩家去解謎
-        if (wirePuzzleUI != null) wirePuzzleUI.SetActive(true); 
+        
+        if (audioSource != null && openBoxSound != null) 
+            audioSource.PlayOneShot(openBoxSound);
+        if (wirePuzzleUI != null) wirePuzzleUI.SetActive(true);
+        if (InventoryManager.Instance != null) InventoryManager.Instance.ToggleHotbar(false); 
         if (statusText != null) statusText.text = ""; 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
 
-    // 💡 這是給 WirePuzzle 呼叫的通電函數
     public void TurnOnPower()
     {
         if (powerOn) return; 
 
         powerOn = true;
         wiresCorrect = true;
-        
-        if (farmLight != null) farmLight.TurnOnLight();
 
-        if (farmGate != null) 
+        if (audioSource != null)
         {
-            farmGate.CloseGate();
+            if (switchClickSound != null) audioSource.PlayOneShot(switchClickSound);
+            if (powerOnSound != null) audioSource.PlayOneShot(powerOnSound);
         }
 
+        if (farmLight != null) farmLight.TurnOnLight();
+        if (farmGate != null) farmGate.CloseGate();
+
+
         if (wirePuzzleUI != null) wirePuzzleUI.SetActive(false);
+        if (InventoryManager.Instance != null) InventoryManager.Instance.ToggleHotbar(true);
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-        
         if (statusText != null) statusText.text = "POWER ON";
     }
 }

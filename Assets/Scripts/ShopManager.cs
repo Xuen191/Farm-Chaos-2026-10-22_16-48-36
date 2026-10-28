@@ -26,13 +26,21 @@ public class ShopManager : MonoBehaviour
     public Sprite iconSheepBait;
 
     [Header("Player Data")]
-    public int playerCoins = 100;         
+    public int playerCoins = 100;   
+
+    [Header("Audio Settings")]
+    public AudioSource audioSource; 
+    public AudioClip paidSound;      
 
     private int currentPrice;
     private string currentItemName;
 
     void Start()
     {
+        if (shopPanel != null) 
+        {
+            shopPanel.SetActive(false); 
+        }
         UpdateCoinUI();
         if (itemDetailPopup != null) itemDetailPopup.SetActive(false);
     }
@@ -41,6 +49,7 @@ public class ShopManager : MonoBehaviour
     {
         if (coinText != null)
             coinText.text = playerCoins.ToString(); 
+
     }
 
     // The main logic function
@@ -79,6 +88,12 @@ public class ShopManager : MonoBehaviour
             playerCoins -= currentPrice;
             UpdateCoinUI();
             Debug.Log("Successfully bought: " + currentItemName);
+
+            if (audioSource != null && paidSound != null) 
+            audioSource.PlayOneShot(paidSound);
+            
+            if (InventoryManager.Instance != null)
+            InventoryManager.Instance.AddItem(currentItemName);
             
             // Add logic to give the item to the player here
 
@@ -98,14 +113,26 @@ public class ShopManager : MonoBehaviour
 
     public void OpenShop()
     {
-        shopPanel.SetActive(true);
+        if (shopPanel != null) shopPanel.SetActive(true);
+        
+        if (InventoryManager.Instance != null) 
+        {
+            InventoryManager.Instance.ToggleHotbar(false);
+        }
+
         Cursor.lockState = CursorLockMode.None; 
         Cursor.visible = true;
     }
 
     public void CloseShop()
     {
-        shopPanel.SetActive(false);
+        if (shopPanel != null) shopPanel.SetActive(false);
+        
+        if (InventoryManager.Instance != null) 
+        {
+            InventoryManager.Instance.ToggleHotbar(true);
+        }
+
         Cursor.lockState = CursorLockMode.Locked; 
         Cursor.visible = false;
     }

@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class ShopInteract : Interactable
 {
-    public ShopManager shopManager; // 把場景中的 ShopUI 拖到這裡
+    public ShopManager shopManager; 
 
     void Start()
     {
@@ -13,7 +13,14 @@ public class ShopInteract : Interactable
     {
         if (shopManager != null)
         {
+
             shopManager.OpenShop();
+
+
+            if (InventoryManager.Instance != null)
+            {
+                InventoryManager.Instance.ToggleHotbar(false);
+            }
         }
     }
 }

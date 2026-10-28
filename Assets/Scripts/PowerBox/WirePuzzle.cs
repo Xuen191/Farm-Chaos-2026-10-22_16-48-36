@@ -15,12 +15,16 @@ public class WirePuzzle : MonoBehaviour
     public GameObject manualBookPanel;    
     public TextMeshProUGUI manualBookText; 
 
-    // 紀錄每條線目前的狀態 (存 Port 編號，0 代表未接)
+    [Header("Audio Settings")]
+    public AudioSource audioSource;
+    public AudioClip insertFuseSound;
+    public AudioClip openBookSound;
+
     private Dictionary<string, int> wireStates = new Dictionary<string, int> { { "Red", 0 }, { "Blue", 0 }, { "Yellow", 0 } };
-    // 紀錄每個 Port 被哪條線佔用 (存顏色，空字串代表沒人)
+
     private Dictionary<int, string> portStates = new Dictionary<int, string> { { 1, "" }, { 2, "" }, { 3, "" } };
 
-    private bool isShuffled = false; // 💡 確保謎題只隨機一次
+    private bool isShuffled = false; 
 
     private PowerBox powerBox;
     private TextMeshProUGUI statusText;
@@ -29,7 +33,7 @@ public class WirePuzzle : MonoBehaviour
     private bool isFuseInserted = false;
     private bool puzzleSolved = false;
 
-    // 記住正確答案 (只在第一次打開時生成)
+
     private int correctPortRed, correctPortBlue, correctPortYellow;
 
     void Awake()
@@ -41,7 +45,6 @@ public class WirePuzzle : MonoBehaviour
 
     void OnEnable()
     {
-        // 💡 如果還沒洗牌過，才進行隨機，確保關掉重開答案不會變
         if (!isShuffled)
         {
             ShuffleAnswers();
@@ -51,7 +54,7 @@ public class WirePuzzle : MonoBehaviour
         UpdateManualBook();
         if (manualBookPanel != null) manualBookPanel.SetActive(false);
 
-        // 根據目前狀態更新提示
+
         if (puzzleSolved) statusText.text = "POWER ON!";
         else if (!isFuseInserted) 
         {
@@ -93,7 +96,21 @@ public class WirePuzzle : MonoBehaviour
         }
     }
 
-    public void OpenManual() { if (manualBookPanel != null) manualBookPanel.SetActive(true); }
+    public void OpenManual() 
+    { 
+        Debug.Log("🚨 OpenManual was called! Playing sound.");
+        if (manualBookPanel != null) 
+        {
+            manualBookPanel.SetActive(true); 
+        }
+
+        // 💡 Play the book opening sound
+        if (audioSource != null && openBookSound != null)
+        {
+            audioSource.PlayOneShot(openBookSound);
+        }
+    }
+
     public void CloseManual() { if (manualBookPanel != null) manualBookPanel.SetActive(false); }
 
     public void ClickFuseSlot()
@@ -105,6 +122,7 @@ public class WirePuzzle : MonoBehaviour
             FusePickup.playerHasFuse = false; 
             if (fuseVisual != null) fuseVisual.SetActive(true);
             if (fuseSlotButton != null) fuseSlotButton.interactable = false; 
+            if (audioSource != null && insertFuseSound != null) audioSource.PlayOneShot(insertFuseSound);
             statusText.text = "Fuse inserted. Now connect the wires.";
             statusText.color = Color.green;
         }
@@ -124,14 +142,12 @@ public class WirePuzzle : MonoBehaviour
             return;
         }
 
-        // 💡 如果點擊已經接好的線，就把它拔掉 (斷開連線)
         if (wireStates[color] != 0)
         {
             int oldPort = wireStates[color];
             wireStates[color] = 0;
             portStates[oldPort] = "";
             
-            // 刪除對應的畫線
             GameObject lineObj = GameObject.Find("UI_Line_" + color);
             if (lineObj != null) Destroy(lineObj);
 
@@ -161,7 +177,6 @@ public class WirePuzzle : MonoBehaviour
             return;
         }
 
-        // 💡 如果這個插孔已經被別的線佔用了，先把它拔掉
         if (portStates[portNumber] != "")
         {
             string existingColor = portStates[portNumber];
@@ -170,7 +185,6 @@ public class WirePuzzle : MonoBehaviour
             if (lineObj != null) Destroy(lineObj);
         }
 
-        // 綁定新線
         wireStates[selectedWire] = portNumber;
         portStates[portNumber] = selectedWire;
 
@@ -200,7 +214,6 @@ public class WirePuzzle : MonoBehaviour
 
     public void ClickMainSwitch()
     {
-        // 確保線都接對才觸發
         if (puzzleSolved || wireStates["Red"] != correctPortRed || wireStates["Blue"] != correctPortBlue || wireStates["Yellow"] != correctPortYellow) return; 
 
         puzzleSolved = true;
@@ -209,10 +222,9 @@ public class WirePuzzle : MonoBehaviour
         
         if (mainSwitchButton != null) mainSwitchButton.interactable = false;
 
-        // 💡 這裡直接呼叫 PowerBox 的通電函數（不需要再按 E 了）
         if (powerBox != null) 
         {
-            powerBox.TurnOnPower(); // 我們會在 PowerBox 裡新增這個函數
+            powerBox.TurnOnPower();
         }
     }
 
@@ -234,14 +246,23 @@ public class WirePuzzle : MonoBehaviour
         else if (colorName == "Yellow") lineImage.color = Color.yellow;
 
         RectTransform lineRect = lineObj.GetComponent<RectTransform>();
-        Vector3 startPos = startNode.position;
-        Vector3 endPos = endNode.position;
-        
-        float distance = Vector3.Distance(startPos, endPos);
-        float angle = Mathf.Atan2(endPos.y - startPos.y, endPos.x - startPos.x) * Mathf.Rad2Deg;
 
-        lineRect.position = startPos + (endPos - startPos) / 2f;
-        lineRect.rotation = Quaternion.Euler(0, 0, angle);
+        Vector2 startPos = this.transform.InverseTransformPoint(startNode.position);
+        Vector2 endPos = this.transform.InverseTransformPoint(endNode.position);
+
+        startPos.y -= 30f; 
+        startPos.x += 0f; 
+
+        endPos.y += 30f;   
+        endPos.x += 0f;    
+
+        Vector2 dir = endPos - startPos;
+        float distance = dir.magnitude;
+        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+
+        lineRect.localPosition = startPos + (dir / 2f);
+        lineRect.localRotation = Quaternion.Euler(0, 0, angle);
+     
         lineRect.sizeDelta = new Vector2(distance, 10f); 
 
         if (manualBookPanel != null)

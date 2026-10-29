@@ -1,14 +1,10 @@
-// Farm Chaos - the coins for this round. Resets every round (the scene reloads).
-//   CoinWallet.Add(10, "Returned a chicken");
-//   if (CoinWallet.TrySpend(25)) { ...give item... }
-//   CoinWallet.Changed += coins => UpdateMyUI(coins);
 using System;
 using UnityEngine;
 
 public class CoinWallet : MonoBehaviour
 {
     [Tooltip("Coins each player starts the round with (handy for testing the shop before tasks exist)")]
-    public int startCoins = 10;
+    public int startCoins = 30;
 
     public static int Coins { get; private set; }
     public static event Action<int> Changed;

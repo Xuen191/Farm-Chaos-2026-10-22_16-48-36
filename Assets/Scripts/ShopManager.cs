@@ -23,17 +23,21 @@ public class ShopManager : MonoBehaviour
     public Sprite iconNightVision;
     public Sprite iconMagicWhistle;
     public Sprite iconPigBait;
-    public Sprite iconSheepBait;
+    public Sprite iconFreshHay;
 
     [Header("Player Data")]
-    public int playerCoins = 100;         
+    public int playerCoins = 100;   
+
+    [Header("Audio Settings")]
+    public AudioSource audioSource; 
+    public AudioClip paidSound;      
 
     private int currentPrice;
     private string currentItemName;
+    private Sprite currentItemIcon;
 
     void Start()
     {
-        // Farm Chaos: coins live in the round's CoinWallet when there is one
         if (CoinWallet.Exists) CoinWallet.Changed += _ => UpdateCoinUI();
         UpdateCoinUI();
         if (itemDetailPopup != null) itemDetailPopup.SetActive(false);
@@ -46,11 +50,12 @@ public class ShopManager : MonoBehaviour
             coinText.text = playerCoins.ToString(); 
     }
 
-    // The main logic function
+    // 顯示商品詳情
     public void ShowItemDetails(Sprite icon, string name, string desc, int price)
     {
         currentPrice = price;
         currentItemName = name;
+        currentItemIcon = icon;
 
         if (popupIcon != null) popupIcon.sprite = icon;
         if (popupName != null) popupName.text = name;
@@ -60,46 +65,54 @@ public class ShopManager : MonoBehaviour
         if (itemDetailPopup != null) itemDetailPopup.SetActive(true);
     }
 
-    // ==========================================
-    // WRAPPER FUNCTIONS FOR UI BUTTONS
-    // ==========================================
-
-    public void Btn_ClickChickenFeed() { ShowItemDetails(iconChickenFeed, "Chicken Feed", "Lure chickens back to the fence.", 10); }
+    public void Btn_ClickChickenFeed() { ShowItemDetails(iconChickenFeed, "Chicken Feed", "Lure chickens back to the fence.", 5); }
     public void Btn_ClickBomb() { ShowItemDetails(iconBomb, "Bomb", "Throw it to scare away the bad dog or herd animals.", 25); }
-    public void Btn_ClickCoffee() { ShowItemDetails(iconCoffee, "Coffee", "Increases movement speed by 50% for 10s.", 15); }
-    public void Btn_ClickMeatyBone() { ShowItemDetails(iconMeatyBone, "Meaty Bone", "Throw it to distract the bad dog.", 20); }
-    public void Btn_ClickNightVision() { ShowItemDetails(iconNightVision, "Night Vision Goggles", "See clearly in the dark.", 50); }
-    public void Btn_ClickMagicWhistle() { ShowItemDetails(iconMagicWhistle, "Magic Whistle", "Attract nearby animals with sound.", 30); }
-    public void Btn_ClickPigBait() { ShowItemDetails(iconPigBait, "Pig Slop", "Delicious feed to lure pigs.", 10); }
-    public void Btn_ClickSheepBait() { ShowItemDetails(iconSheepBait, "Sheep Hay", "Fresh hay, sheep's favorite.", 10); }
+    public void Btn_ClickCoffee() { ShowItemDetails(iconCoffee, "Coffee", "Increases movement speed by 50% for 10s.", 5); }
+    public void Btn_ClickMeatyBone() { ShowItemDetails(iconMeatyBone, "Meaty Bone", "Throw it to distract the bad dog.", 10); }
+    public void Btn_ClickNightVision() { ShowItemDetails(iconNightVision, "Night Vision Goggles", "See clearly in the dark.", 20); }
+    public void Btn_ClickMagicWhistle() { ShowItemDetails(iconMagicWhistle, "Magic Whistle", "Attract nearby animals with sound.", 20); }
+    public void Btn_ClickPigBait() { ShowItemDetails(iconPigBait, "Pig Slop", "Delicious feed to lure pigs.", 5); }
+    public void Btn_ClickFreshHay() { ShowItemDetails(iconFreshHay, "Fresh Hay", "Fresh hay, cow's or sheep's favorite.", 5); }
 
     // ==========================================
 
     public void ConfirmPurchase()
     {
-        // Farm Chaos: no room in the item bar -> don't take the coins
-        if (Inventory.Instance != null && !Inventory.Instance.CanAdd(currentItemName))
+        if (CoinWallet.Exists && CoinWallet.TrySpend(currentPrice))
         {
-            if (popupPrice != null) popupPrice.text = "<color=red>Your pockets are full!</color>";
-            return;
-        }
+            if (Inventory.Instance != null)
+            {
+                Inventory.Instance.Add(currentItemName, currentItemIcon);
+            }
 
-        bool paid = CoinWallet.Exists ? CoinWallet.TrySpend(currentPrice) : playerCoins >= currentPrice;
-        if (paid)
+            if (audioSource != null && paidSound != null)
+            {
+                audioSource.PlayOneShot(paidSound);
+            }
+
+            ClosePopup();
+        }
+        else if (!CoinWallet.Exists && playerCoins >= currentPrice)
         {
-            if (!CoinWallet.Exists) playerCoins -= currentPrice;
+            playerCoins -= currentPrice;
             UpdateCoinUI();
-            Debug.Log("Successfully bought: " + currentItemName);
             
-            // Farm Chaos: the item goes into the player's item bar
-            if (Inventory.Instance != null) Inventory.Instance.Add(currentItemName, popupIcon != null ? popupIcon.sprite : null);
+            if (Inventory.Instance != null)
+            {
+                Inventory.Instance.Add(currentItemName, currentItemIcon);
+            }
+
+            if (audioSource != null && paidSound != null)
+            {
+                audioSource.PlayOneShot(paidSound);
+            }
 
             ClosePopup();
         }
         else
         {
-            Debug.Log("Not enough coins!");
-            if (popupPrice != null) popupPrice.text = "<color=red>Not enough coins!</color>";
+            Debug.Log("❌ 金幣不足，無法購買！");
+            // 你可以在這裡讓價格文字變紅，或者播放錯誤音效
         }
     }
 
@@ -110,14 +123,16 @@ public class ShopManager : MonoBehaviour
 
     public void OpenShop()
     {
-        shopPanel.SetActive(true);
+        if (shopPanel != null) shopPanel.SetActive(true);
+
         Cursor.lockState = CursorLockMode.None; 
         Cursor.visible = true;
     }
 
     public void CloseShop()
     {
-        shopPanel.SetActive(false);
+        if (shopPanel != null) shopPanel.SetActive(false);
+
         Cursor.lockState = CursorLockMode.Locked; 
         Cursor.visible = false;
     }

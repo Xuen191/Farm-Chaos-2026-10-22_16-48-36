@@ -103,10 +103,29 @@ public class ProximityInteractor : MonoBehaviour
             if (hintText.text != msg) hintText.text = msg;
         }
     }
-
+    
     public void Use()
     {
-        if (current == null || UIOpen) return;
-        current.Interact();
+        if (UIOpen) return;
+
+        if (current != null && current.gameObject.name.Contains("Dog"))
+        {
+            StickAttack attack = GetComponent<StickAttack>();
+            if (attack != null)
+            {
+                attack.HitAttack(); 
+            }
+            return; 
+        }
+
+        if (current != null) 
+        {
+            current.Interact();
+        }
+        else 
+        {
+            StickAttack attack = GetComponent<StickAttack>();
+            if (attack != null) attack.HitAttack();
+        }
     }
 }

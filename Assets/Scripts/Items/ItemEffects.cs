@@ -1,22 +1,49 @@
 // Farm Chaos - what each shop item does when you use it from the item bar.
-// Returns true if the item was used up.
 using System.Collections;
 using System.Linq;
 using UnityEngine;
 
 public class ItemEffects : MonoBehaviour
 {
+    [Header("Baits (Food)")]
+    public GameObject chickenFeedPrefab;
+    public GameObject pigSlopPrefab;
+    public GameObject freshHayPrefab;
+    public float foodThrowForce = 200f;
+
     [Header("Coffee")]
     public float coffeeSpeedBoost = 1.5f;
     public float coffeeSeconds = 10f;
+    
     [Header("Night Vision Goggles")]
     public float goggleSeconds = 25f;
     public float goggleLightRange = 18f;
+    public TMPro.TextMeshProUGUI nightVisionTimerText;
+    
     [Header("Bomb")]
     public float bombThrowDistance = 4f;
     public float bombRadius = 6f;
     public float bombForce = 9f;
-    public Material poofMaterial;   // soft glow material (Mat_light_pool)
+    public Material poofMaterial;
+
+    [Header("Meaty Bone")]
+    public GameObject meatyBonePrefab; 
+    public float meatThrowForce = 400f;
+
+    [Header("Magic Whistle")]
+    public float whistleRadius = 15f;
+    public float whistleCooldown = 20f; 
+    
+    private float nextWhistleTime = 0f;
+
+    // 💡 新增：音效設定區
+    [Header("Audio Settings")]
+    public AudioClip bombExplodeSound;
+    public AudioClip foodDropSound;
+    public AudioClip whistleSound;
+    public AudioClip meatDropSound;
+    public AudioClip wearGogglesSound;
+    public AudioClip coffeeDrinkSound;
 
     public static ItemEffects Instance { get; private set; }
     void Awake() { Instance = this; }
@@ -28,36 +55,79 @@ public class ItemEffects : MonoBehaviour
     public bool Use(string item, out string message)
     {
         var p = Player;
+        
+        // 💡 先給 message 一個預設值，防止報錯
+        message = "Can't use that here."; 
+        
+        if (p == null) 
+        { 
+            message = "No player!"; 
+            return false; 
+        }
+
         switch (item)
         {
             case "Coffee":
-                if (p == null) { message = "No player!"; return false; }
                 StartCoroutine(Coffee(p));
                 message = "Coffee! Zoom zoom!";
                 return true;
 
             case "Night Vision Goggles":
-                if (p == null) { message = "No player!"; return false; }
                 StartCoroutine(Goggles(p));
                 message = "Night vision on!";
                 return true;
 
             case "Bomb":
-                if (p == null) { message = "No player!"; return false; }
                 Bomb(p);
                 message = "BOOM!";
                 return true;
 
             case "Chicken Feed":
+                if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
+                ThrowFood(chickenFeedPrefab, p, "Chicken Feed"); 
+                message = "Dropped chicken feed!";
+                return true;
+
             case "Pig Slop":
-            case "Sheep Hay":
+                if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
+                ThrowFood(pigSlopPrefab, p, "Pig Slop");
+                message = "Dropped pig slop!";
+                return true;
+
+            case "Fresh Hay":
+                if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
+                ThrowFood(freshHayPrefab, p, "Fresh Hay");
+                message = "Dropped fresh hay!";
+                return true;
+
             case "Meaty Bone":
+                if (meatDropSound != null) AudioSource.PlayClipAtPoint(meatDropSound, p.transform.position);
+                message = "Dropped meaty bone!";
+                return true;
+
             case "Magic Whistle":
-                message = "No animals to lure here yet!";
-                return false;   // keep it for later
+                if (Time.time < nextWhistleTime)
+                {
+                    float timeLeft = Mathf.Ceil(nextWhistleTime - Time.time);
+                    message = "Whistle cooling down... (" + timeLeft + "s)";
+                    return false;
+                }
+
+                nextWhistleTime = Time.time + whistleCooldown;
+                
+                if (whistleSound != null) AudioSource.PlayClipAtPoint(whistleSound, p.transform.position);
+
+
+                Collider[] animals = Physics.OverlapSphere(p.transform.position, whistleRadius, LayerMask.GetMask("Animal"));
+                foreach (var animal in animals)
+                {
+                    Debug.Log("🐑 動物被口哨吸引了：" + animal.name);
+                }
+
+                message = "Whistle blown!";
+                return false;
 
             default:
-                message = "Can't use that here.";
                 return false;
         }
     }
@@ -66,7 +136,7 @@ public class ItemEffects : MonoBehaviour
 
     IEnumerator Coffee(SpherePlayer p)
     {
-        if (Time.time < coffeeUntil) { coffeeUntil += coffeeSeconds; yield break; }   // already buzzing: just last longer
+        if (Time.time < coffeeUntil) { coffeeUntil += coffeeSeconds; yield break; }
         coffeeUntil = Time.time + coffeeSeconds;
         float baseSpeed = p.moveSpeed, baseAccel = p.acceleration;
         p.moveSpeed = baseSpeed * coffeeSpeedBoost;
@@ -79,22 +149,35 @@ public class ItemEffects : MonoBehaviour
     {
         if (Time.time < goggleUntil) { goggleUntil += goggleSeconds; yield break; }
         goggleUntil = Time.time + goggleSeconds + 0.5f;
-        var l = p.GetComponentsInChildren<Light>().FirstOrDefault(x => x.type == LightType.Point);
-        bool made = false;
-        if (l == null)
+
+        if (wearGogglesSound != null) AudioSource.PlayClipAtPoint(wearGogglesSound, p.transform.position);
+
+        if (nightVisionTimerText != null) 
         {
-            var go = new GameObject("Goggles_Light"); go.transform.SetParent(p.transform, false);
-            l = go.AddComponent<Light>(); l.type = LightType.Point; l.color = new Color(0.75f, 1f, 0.8f); l.shadows = LightShadows.None;
-            made = true;
+            nightVisionTimerText.gameObject.SetActive(true);
+            nightVisionTimerText.color = Color.green;
         }
-        float r0 = l.range, i0 = l.intensity; Color c0 = l.color;
-        float t = 0f;
-        while (t < 0.5f) { t += Time.deltaTime; l.range = Mathf.Lerp(r0, goggleLightRange, t / 0.5f); l.intensity = Mathf.Lerp(i0, Mathf.Max(i0, 3f), t / 0.5f); yield return null; }
-        l.color = Color.Lerp(c0, new Color(0.75f, 1f, 0.8f), 0.5f);   // soft green tint
-        while (Time.time < goggleUntil) yield return null;
-        t = 0f;
-        while (t < 1f && l != null) { t += Time.deltaTime; l.range = Mathf.Lerp(goggleLightRange, r0, t); l.intensity = Mathf.Lerp(Mathf.Max(i0, 3f), i0, t); yield return null; }
-        if (l != null) { if (made) Destroy(l.gameObject); else { l.range = r0; l.intensity = i0; l.color = c0; } }
+
+        Color originalAmbient = RenderSettings.ambientLight;
+        RenderSettings.ambientLight = new Color(0.5f, 0.8f, 0.5f); 
+
+        while (Time.time < goggleUntil)
+        {
+            float timeLeft = goggleUntil - Time.time;
+            
+
+            if (nightVisionTimerText != null)
+            {
+                nightVisionTimerText.text = "Night Vision: " + Mathf.CeilToInt(timeLeft) + "s";
+                
+                if (timeLeft <= 5f) nightVisionTimerText.color = Color.red;
+            }
+
+            yield return null;
+        }
+
+        RenderSettings.ambientLight = originalAmbient;
+        if (nightVisionTimerText != null) nightVisionTimerText.gameObject.SetActive(false);
     }
 
     void Bomb(SpherePlayer p)
@@ -108,7 +191,7 @@ public class ItemEffects : MonoBehaviour
         {
             var rb = c.attachedRigidbody;
             if (rb == null || rb.isKinematic) continue;
-            float scale = rb.GetComponent<SpherePlayer>() != null ? 0.35f : 1f;   // just a little nudge for the player
+            float scale = rb.GetComponent<SpherePlayer>() != null ? 0.35f : 1f;
             rb.AddExplosionForce(bombForce * scale, at, bombRadius, 1.2f, ForceMode.VelocityChange);
         }
         StartCoroutine(Poof(at));
@@ -116,6 +199,9 @@ public class ItemEffects : MonoBehaviour
 
     IEnumerator Poof(Vector3 at)
     {
+        // 💡 播放爆炸音效
+        if (bombExplodeSound != null) AudioSource.PlayClipAtPoint(bombExplodeSound, at);
+
         var flash = new GameObject("Bomb_Flash").AddComponent<Light>();
         flash.transform.position = at + Vector3.up; flash.type = LightType.Point; flash.range = 10f; flash.color = new Color(1f, 0.8f, 0.5f); flash.shadows = LightShadows.None;
         GameObject puff = null; MaterialPropertyBlock mpb = null; Renderer pr = null; Color pc = Color.white;
@@ -141,5 +227,34 @@ public class ItemEffects : MonoBehaviour
         }
         Destroy(flash.gameObject);
         if (puff != null) Destroy(puff);
+    }
+
+    private void ThrowFood(GameObject prefab, SpherePlayer p, string itemName)
+    {
+        if (prefab == null) return;
+
+        var cam = Camera.main;
+        Vector3 fwd = cam != null ? Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized : p.transform.forward;
+
+        Vector3 spawnPos = p.transform.position + fwd * 1f + Vector3.up * 0.5f;
+        
+        GameObject food = Instantiate(prefab, spawnPos, Quaternion.identity);
+        
+        Rigidbody rb = food.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            Vector3 throwDir = (fwd + Vector3.up * 0.3f).normalized;
+            rb.AddForce(throwDir * foodThrowForce);
+        }
+
+        // 💡 動態加上撿取腳本！
+        DroppedFood pickupScript = food.AddComponent<DroppedFood>();
+        pickupScript.itemName = itemName; // 告訴它這是什麼食物
+
+        // 💡 確保它有 Collider，這樣 ProximityInteractor 才抓得到
+        if (food.GetComponent<Collider>() == null)
+        {
+            food.AddComponent<BoxCollider>();
+        }
     }
 }

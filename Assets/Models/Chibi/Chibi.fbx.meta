@@ -17,6 +17,31 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: FixedBlush
+    second: {fileID: 2100000, guid: ae085634af1e50c47a7c3dd54cf1b4f8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: FixedBrow
+    second: {fileID: 2100000, guid: bfc1215779125954385f8559ba480048, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: FixedEyeRim
+    second: {fileID: 2100000, guid: c1dce24800e22cf4994f13e13f8b3c5b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: FixedEyeWhite
+    second: {fileID: 2100000, guid: f6595941eef4d624e9d116aeadf5316e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: FixedHighlight
+    second: {fileID: 2100000, guid: 1310fff6352de4c448f8a1454b162da8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: FixedInk
     second: {fileID: 2100000, guid: 10d70e8bf1679644ab828a24aaeb506a, type: 2}
   - first:
@@ -27,13 +52,38 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: FixedMouth
+    second: {fileID: 2100000, guid: dc0b7e75c99c04142a5815e294977bf9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: FixedOrange
     second: {fileID: 2100000, guid: 18c68757917fb8c439efb07fa6f33b37, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: FixedPupil
+    second: {fileID: 2100000, guid: 629829ac97b16a44aa68d603dc9714f6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: FixedPupilShade
+    second: {fileID: 2100000, guid: 0f2ff22c341748e4f8958e1f4dd03bff, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: FixedRed
     second: {fileID: 2100000, guid: af4cbb83ec4f6164a91a14f0ba80039c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: FixedTear
+    second: {fileID: 2100000, guid: 466d673f8469d4145852495b7a09076f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: FixedTongue
+    second: {fileID: 2100000, guid: c750b0eb9ddb9a1499dab4fdb602afab, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -112,9 +162,38 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
+      name: Carry
+      takeName: Bean_Rig|Carry
+      internalID: -89134891555989339
+      firstFrame: 0
+      lastFrame: 39
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000u
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
       name: Cheer
-      takeName: Chibi_Rig|Cheer
-      internalID: 3949849099214394516
+      takeName: Bean_Rig|Cheer
+      internalID: -7364024826670835462
       firstFrame: 0
       lastFrame: 23
       wrapMode: 0
@@ -141,9 +220,38 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
+      name: Fall
+      takeName: Bean_Rig|Fall
+      internalID: -8093327054563924243
+      firstFrame: 0
+      lastFrame: 53
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000u
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
       name: Idle
-      takeName: Chibi_Rig|Idle
-      internalID: -1618120282058090284
+      takeName: Bean_Rig|Idle
+      internalID: -4021998120669838416
       firstFrame: 0
       lastFrame: 59
       wrapMode: 0
@@ -171,10 +279,10 @@ ModelImporter:
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
       name: Jump
-      takeName: Chibi_Rig|Jump
-      internalID: 4342570531653102168
+      takeName: Bean_Rig|Jump
+      internalID: -2749496341040985394
       firstFrame: 0
-      lastFrame: 17
+      lastFrame: 21
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -200,8 +308,8 @@ ModelImporter:
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
       name: Run
-      takeName: Chibi_Rig|Run
-      internalID: -1484623214852166080
+      takeName: Bean_Rig|Run
+      internalID: -8166704971415625816
       firstFrame: 0
       lastFrame: 15
       wrapMode: 0
@@ -229,10 +337,10 @@ ModelImporter:
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
       name: Walk
-      takeName: Chibi_Rig|Walk
-      internalID: -5524908749239353387
+      takeName: Bean_Rig|Walk
+      internalID: -5290709594007988603
       firstFrame: 0
-      lastFrame: 23
+      lastFrame: 25
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -258,8 +366,8 @@ ModelImporter:
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
       name: Wave
-      takeName: Chibi_Rig|Wave
-      internalID: -3595378466405348556
+      takeName: Bean_Rig|Wave
+      internalID: 6605440388385045997
       firstFrame: 0
       lastFrame: 29
       wrapMode: 0

@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 // Farm Chaos - turns the Blender chibi (Assets/Models/Chibi/Chibi.fbx) into the player.
-// Menu: Tools > Farm Chaos > 22. Build Chibi Player
+// Menu: Tools > Farm Chaos > 22. Build Chibi Player   (now builds Bean Buddy from Art/bean_buddy.py)
 //  - import settings (looping clips, URP materials by slot name, crisp face pictures)
 //  - Chibi.controller (Idle/Walk/Run blend by speed, Jump in the air, Wave + Cheer emotes)
 //  - Assets/Prefabs/Chibi_Player.prefab (ChibiMotor + ChibiLook)
@@ -69,6 +69,10 @@ public static class FarmChibiBuilder
         ("Accent", "F4B8C1"), ("Face", "FFFFFF"), ("HatMain", "E9CF7A"), ("HatAccent", "F28FB1"),
         ("FixedWhite", "FFFFFF"), ("FixedRed", "E0505C"), ("FixedOrange", "F5A623"), ("FixedInk", "2E2A3A"),
         ("FixedLeaf", "7FC98A"), ("FixedYellow", "FFE07A"),
+        // Bean Buddy face pieces
+        ("FixedEyeRim", "2A2230"), ("FixedEyeWhite", "FFFFFF"), ("FixedPupil", "120F16"), ("FixedPupilShade", "57515F"),
+        ("FixedHighlight", "FFFFFF"), ("FixedBrow", "3A2A33"), ("FixedMouth", "4E2C38"), ("FixedTongue", "F28A99"),
+        ("FixedBlush", "F7A1B6"), ("FixedTear", "9FD3F7"),
     };
 
     static System.Collections.Generic.Dictionary<string, Material> Materials(Texture2D smile)
@@ -92,6 +96,12 @@ public static class FarmChibiBuilder
                 m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
             }
             if (slot == "Hair" || slot.StartsWith("Hat")) { m.SetFloat("_Cull", 0f); m.doubleSidedGI = true; }   // hair caps are open shells
+            if (slot == "FixedPupil" || slot == "FixedPupilShade" || slot == "FixedEyeWhite" || slot == "FixedTear") m.SetFloat("_Smoothness", 0.8f);   // glossy eyes
+            if (slot == "FixedHighlight" || slot == "FixedEyeWhite")
+            {
+                m.EnableKeyword("_EMISSION"); m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+                m.SetColor("_EmissionColor", Color.white * (slot == "FixedHighlight" ? 0.8f : 0.12f));
+            }
             EditorUtility.SetDirty(m);
             d[slot] = m;
         }
@@ -111,7 +121,7 @@ public static class FarmChibiBuilder
         {
             string n = c.name.Contains("|") ? c.name.Substring(c.name.LastIndexOf('|') + 1) : c.name;
             c.name = n;
-            c.loopTime = n != "Jump";
+            c.loopTime = n != "Jump" && n != "Fall";
             c.loopPose = false;
         }
         mi.clipAnimations = clips;
@@ -130,6 +140,7 @@ public static class FarmChibiBuilder
         ac.AddParameter(new AnimatorControllerParameter { name = "Grounded", type = AnimatorControllerParameterType.Bool, defaultBool = true });
         ac.AddParameter("Wave", AnimatorControllerParameterType.Trigger);
         ac.AddParameter("Cheer", AnimatorControllerParameterType.Trigger);
+        ac.AddParameter("Fall", AnimatorControllerParameterType.Trigger);
         var sm = ac.layers[0].stateMachine;
 
         var loco = ac.CreateBlendTreeInController("Locomotion", out var tree, 0);
@@ -152,6 +163,15 @@ public static class FarmChibiBuilder
             var t = loco.AddTransition(state); t.AddCondition(AnimatorConditionMode.If, 0, trig); t.hasExitTime = false; t.duration = 0.12f;
             var back = state.AddTransition(loco); back.hasExitTime = true; back.exitTime = loops; back.duration = 0.2f;
         }
+        // knocked over (earthquake): from anywhere, then back to walking
+        var fallClip = Clip("Fall");
+        if (fallClip != null)
+        {
+            var fall = sm.AddState("Fall"); fall.motion = fallClip;
+            var toFall = sm.AddAnyStateTransition(fall);
+            toFall.AddCondition(AnimatorConditionMode.If, 0, "Fall"); toFall.hasExitTime = false; toFall.duration = 0.05f; toFall.canTransitionToSelf = false;
+            var up = fall.AddTransition(loco); up.hasExitTime = true; up.exitTime = 0.97f; up.duration = 0.1f;
+        }
         EditorUtility.SetDirty(ac);
         AssetDatabase.SaveAssets();
         return ac;
@@ -166,17 +186,15 @@ public static class FarmChibiBuilder
         inst.name = "Model";
         inst.transform.SetParent(root.transform, false);
 
-        // size: about as tall as the ball is wide
-        var rs = inst.GetComponentsInChildren<Renderer>(true);
-        var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
-        float h = Mathf.Max(0.01f, b.size.y);
-        // hats/hair add height - measure the body only
-        var body = rs.FirstOrDefault(r => r.name.Contains("Body"));
-        if (body != null) h = Mathf.Max(0.01f, body.bounds.size.y);
-        inst.transform.localScale *= TargetHeight / h;
-        var rs2 = inst.GetComponentsInChildren<Renderer>(true);
-        var b2 = body != null ? body.bounds : rs2[0].bounds;
-        inst.transform.localPosition -= new Vector3(0, b2.min.y, 0);   // feet at the root
+        // size: measure the character without hats (feet to top of head)
+        System.Func<Bounds> measure = () =>
+        {
+            var rs = inst.GetComponentsInChildren<Renderer>(true).Where(r => !r.name.StartsWith("Hat_")).ToArray();
+            var bb = rs[0].bounds; foreach (var r in rs) bb.Encapsulate(r.bounds);
+            return bb;
+        };
+        inst.transform.localScale *= TargetHeight / Mathf.Max(0.01f, measure().size.y);
+        inst.transform.localPosition -= new Vector3(0, measure().min.y, 0);   // feet at the root
 
         var anim = inst.GetComponent<Animator>();
         if (anim == null) anim = inst.AddComponent<Animator>();
@@ -187,6 +205,7 @@ public static class FarmChibiBuilder
         var look = root.AddComponent<ChibiLook>();
         look.renderers = inst.GetComponentsInChildren<Renderer>(true);
         look.faces = faces;
+        root.AddComponent<BeanWobble>();                 // floppy head + arms
         var motor = root.AddComponent<ChibiMotor>();
         motor.animator = anim; motor.look = look;
         foreach (var r in look.renderers) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;

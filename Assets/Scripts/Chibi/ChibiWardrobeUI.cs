@@ -35,19 +35,17 @@ public class ChibiWardrobeUI : MonoBehaviour
     {
         var b = Btn(transform, "Customize", Pink, new Vector2(320, 84), new Vector2(0f, 1f), new Vector2(200, -170), 34);
         b.onClick.AddListener(Open);
-        string Pretty(string s) => s == "FlowerCrown" ? "Flower Crown" : s == "Straw" ? "Straw Hat" : s == "Chicken" ? "Chicken!" : s;
+        string Pretty(string s) => s == "FlowerCrown" ? "Flower Crown" : s == "Straw" ? "Straw Hat" : s == "Chicken" ? "Chicken!" : s == "Bucket" ? "Bucket Hat" : s;
         Cat C(string n, int count, float focus, float dist, Func<ChibiLook.Data, int> g, Action<ChibiLook.Data, int> s, Func<int, string> l, Func<int, Color?> sw = null)
             => new Cat { name = n, count = count, focus = focus, dist = dist, get = g, set = s, label = l, swatch = sw };
-        cats.Add(C("Hair", ChibiLook.HairStyles.Length, 0.95f, 1.55f, d => d.hairStyle, (d, i) => d.hairStyle = i, i => ChibiLook.HairStyles[i]));
-        cats.Add(C("Hair Colour", ChibiLook.HairColors.Length, 0.95f, 1.55f, d => d.hairColor, (d, i) => d.hairColor = i, i => "Colour", i => ChibiLook.HairColors[i]));
-        cats.Add(C("Hat", ChibiLook.Hats.Length, 1.05f, 1.75f, d => d.hat, (d, i) => d.hat = i, i => Pretty(ChibiLook.Hats[i])));
-        cats.Add(C("Hat Colour", ChibiLook.Clothes.Length, 1.05f, 1.75f, d => d.hatColor, (d, i) => d.hatColor = i, i => "Colour", i => ChibiLook.Clothes[i]));
-        cats.Add(C("Face", 9, 0.92f, 1.35f, d => d.face, (d, i) => d.face = i, i => ((ChibiLook.Face)i).ToString()));
-        cats.Add(C("Overalls", ChibiLook.Clothes.Length, 0.55f, 2.1f, d => d.outfit, (d, i) => d.outfit = i, i => "Colour", i => ChibiLook.Clothes[i]));
-        cats.Add(C("Shirt", ChibiLook.Shirts.Length, 0.6f, 2.1f, d => d.shirt, (d, i) => d.shirt = i, i => "Colour", i => ChibiLook.Shirts[i]));
-        cats.Add(C("Socks", ChibiLook.Shirts.Length, 0.25f, 1.7f, d => d.socks, (d, i) => d.socks = i, i => "Colour", i => ChibiLook.Shirts[i]));
-        cats.Add(C("Shoes", ChibiLook.ShoeColors.Length, 0.22f, 1.7f, d => d.shoes, (d, i) => d.shoes = i, i => "Colour", i => ChibiLook.ShoeColors[i]));
-        cats.Add(C("Skin", ChibiLook.SkinTones.Length, 0.75f, 2.0f, d => d.skin, (d, i) => d.skin = i, i => "Tone", i => ChibiLook.SkinTones[i]));
+        // Bean Buddy: hair, hair colour, hat, hat colour, face, sweatshirt, body colour
+        cats.Add(C("Hair", ChibiLook.HairStyles.Length, 0.85f, 2.2f, d => d.hairStyle, (d, i) => d.hairStyle = i, i => ChibiLook.HairStyles[i]));
+        cats.Add(C("Hair Colour", ChibiLook.HairColors.Length, 0.85f, 2.2f, d => d.hairColor, (d, i) => d.hairColor = i, i => "Colour", i => ChibiLook.HairColors[i]));
+        cats.Add(C("Hat", ChibiLook.Hats.Length, 0.9f, 2.3f, d => d.hat, (d, i) => d.hat = i, i => Pretty(ChibiLook.Hats[i])));
+        cats.Add(C("Hat Colour", ChibiLook.Clothes.Length, 0.9f, 2.3f, d => d.hatColor, (d, i) => d.hatColor = i, i => "Colour", i => ChibiLook.Clothes[i]));
+        cats.Add(C("Face", 9, 0.78f, 1.7f, d => d.face, (d, i) => d.face = i, i => ((ChibiLook.Face)i).ToString()));
+        cats.Add(C("Sweater", ChibiLook.Clothes.Length, 0.55f, 2.3f, d => d.outfit, (d, i) => d.outfit = i, i => "Colour", i => ChibiLook.Clothes[i]));
+        cats.Add(C("Body", ChibiLook.SkinTones.Length, 0.65f, 2.7f, d => d.skin, (d, i) => d.skin = i, i => "Colour", i => ChibiLook.SkinTones[i]));
     }
 
     // ------------------------------------------------------------ open / close

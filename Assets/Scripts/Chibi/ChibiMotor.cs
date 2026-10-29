@@ -33,6 +33,7 @@ public class ChibiMotor : MonoBehaviour
     static readonly int GroundedId = Animator.StringToHash("Grounded");
     static readonly int WaveId = Animator.StringToHash("Wave");
     static readonly int CheerId = Animator.StringToHash("Cheer");
+    static readonly int FallId = Animator.StringToHash("Fall");
 
     void Start()
     {
@@ -139,6 +140,21 @@ public class ChibiMotor : MonoBehaviour
     }
     Vector3 baseScale = Vector3.one;
     void Awake() { if (animator != null) baseScale = animator.transform.localScale; }
+
+    /// <summary>Earthquake: if standing on the ground, fall over (floppy) and get back up.</summary>
+    public bool Knock()
+    {
+        if (!wasGrounded || posing) return false;          // mid-jump = you dodged it!
+        if (animator != null) animator.SetTrigger(FallId);
+        if (look != null) look.SetExpression(ChibiLook.Face.Surprised, 0.7f);
+        StartCoroutine(Dizzy());
+        return true;
+        System.Collections.IEnumerator Dizzy()
+        {
+            yield return new WaitForSeconds(0.7f);
+            if (look != null) look.SetExpression(ChibiLook.Face.Sad, 1.1f);
+        }
+    }
 
     public void Emote(bool cheer)
     {

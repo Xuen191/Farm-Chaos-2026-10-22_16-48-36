@@ -4,6 +4,7 @@
 //   * power cut / power fixed (power box)        * electric gate switches
 //   * the round clock (host's clock wins)         * START: everyone plays the intro, then the host loads the farm
 //   * SPY MODE: with 3+ players in the farm, the host secretly picks a spy; each player is told only their own role
+//   * TONIGHT'S WEATHER: the host rolls it when the farm loads and everyone gets the same weather
 using System.Collections;
 using TMPro;
 using Unity.Netcode;
@@ -205,6 +206,9 @@ public class NetPlayer : NetworkBehaviour
     {
         if (!IsServer || LobbyUI.Instance != null) return;          // still in the lobby
         if (FindAnyObjectByType<RoundClock>() == null) return;      // not the farm
+        // tonight's weather: the host rolls it and everyone gets the same
+        var (weather, weatherSeed) = TonightsWeather.Pick();
+        WeatherRpc(weather, weatherSeed);
         var ids = new System.Collections.Generic.List<ulong>(NetworkManager.ConnectedClientsIds);
         SpyClientId = ids.Count >= MinPlayersForSpy ? ids[Random.Range(0, ids.Count)] : ulong.MaxValue;
         foreach (var id in ids)
@@ -216,6 +220,9 @@ public class NetPlayer : NetworkBehaviour
         if (SpyClientId != ulong.MaxValue) Debug.Log($"[Farm Chaos] Spy mode: {ids.Count} players, roles sent.");
     }
 
+    [Rpc(SendTo.Everyone)]
+    void WeatherRpc(int weather, int weatherSeed) { TonightsWeather.Receive(weather, weatherSeed); }
+
     [Rpc(SendTo.Owner)]
     void TellRoleRpc(bool spyMode, bool youAreSpy)
     {
@@ -225,6 +232,7 @@ public class NetPlayer : NetworkBehaviour
         IEnumerator ShowRoleSoon()
         {
             yield return new WaitForSeconds(1.2f);
+            while (TonightsWeather.Showing) yield return null;   // after the weather roll
             RoleCard.Show(IAmSpy ? "You are the SPY" : "You are a FARMER", IAmSpy ? SpyGoal : FarmerGoal, IAmSpy);
         }
     }

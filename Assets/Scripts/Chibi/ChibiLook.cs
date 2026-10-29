@@ -1,4 +1,5 @@
-// Farm Chaos - the chibi's look: colours, hairstyle, hat and face expression.
+// Farm Chaos - the player's look (Bean Buddy): body colour, sweatshirt colour, hat and face expression.
+// Expressions swap the eyebrow + mouth pieces (Brow_Happy + Mouth_Happy ...); the big round eyes never change.
 // Your choices are saved on this device (PlayerPrefs) and loaded in every scene.
 //   look.SetExpression(ChibiLook.Face.Surprised, 2f)   -> a reaction for 2 seconds, then back to your default face
 using System;
@@ -12,18 +13,19 @@ public class ChibiLook : MonoBehaviour
     [Serializable]
     public class Data
     {
-        public int skin = 0, shirt = 0, outfit = 0, shoes = 0, hairColor = 0, hat = 0, hairStyle = 1, hatColor = 0, socks = 0;
+        public int skin = 0, shirt = 0, outfit = 4, shoes = 0, hairColor = 0, hat = 6, hairStyle = 1, hatColor = 3, socks = 0;
         public int face = 0;   // default expression
     }
 
     // palettes (pastel + cozy)
-    public static readonly Color[] SkinTones = { Hex("FFE3D3"), Hex("F6C6A4"), Hex("E0A47E"), Hex("B97A56"), Hex("8A5A3C"), Hex("FFE6DA") };
+    // body colours for the bean (cream, peach, pink, mint, sky, lilac, butter, cloud grey)
+    public static readonly Color[] SkinTones = { Hex("FFEEE2"), Hex("FFD9C2"), Hex("FFD1DC"), Hex("CFF0DD"), Hex("D4E6FF"), Hex("E4D8FF"), Hex("FFF0B8"), Hex("E6E4EE") };
     public static readonly Color[] Clothes = { Hex("8EC5F0"), Hex("F4B8C1"), Hex("9BDEA8"), Hex("FFD27A"), Hex("C3A6F2"), Hex("FF9E7A"), Hex("FFF0D9"), Hex("6B6F8A") };
     public static readonly Color[] HairColors = { Hex("7A5240"), Hex("3A2E2A"), Hex("E8C27A"), Hex("F28FB1"), Hex("8EC5F0"), Hex("B98AE8"), Hex("E0603E"), Hex("F2F0EA") };
     public static readonly Color[] Shirts = { Hex("FFFFFF"), Hex("FFF0D9"), Hex("FDE2E8"), Hex("E2F1FF"), Hex("E6F7E4"), Hex("FFF6C9"), Hex("EDE4FF") };
     public static readonly Color[] ShoeColors = { Hex("5A3A33"), Hex("A87B5C"), Hex("E07A8E"), Hex("3E4A6B"), Hex("F2F0EA"), Hex("D9A441") };
     public static readonly string[] HairStyles = { "None", "Bob", "Spiky", "Pigtails", "Long" };
-    public static readonly string[] Hats = { "None", "Straw", "Cap", "Chicken", "FlowerCrown", "Beret" };
+    public static readonly string[] Hats = { "None", "Straw", "Cap", "Chicken", "FlowerCrown", "Beret", "Bucket" };
 
     [Header("Set up by Tools > Farm Chaos > 22. Build Chibi Player")]
     public Renderer[] renderers;
@@ -90,6 +92,8 @@ public class ChibiLook : MonoBehaviour
         }
         for (int i = 1; i < HairStyles.Length; i++) SetActive("Hair_" + HairStyles[i], data.hairStyle == i);
         for (int i = 1; i < Hats.Length; i++) SetActive("Hat_" + Hats[i], data.hat == i);
+        foreach (var kv in parts)   // tall hair bits (ahoge, spiky crown) hide under a hat
+            if (kv.Key.EndsWith("_Ahoge") || kv.Key.EndsWith("_Crown")) { bool on = data.hat == 0; if (kv.Value.gameObject.activeSelf != on) kv.Value.gameObject.SetActive(on); }
         ShowFace(faceUntil > 0f ? current : (Face)data.face);
         Changed?.Invoke();
     }
@@ -97,8 +101,8 @@ public class ChibiLook : MonoBehaviour
     Color? SlotColor(string matName)
     {
         string n = matName.Replace(" (Instance)", "");
-        if (n.EndsWith("HatMain")) return data.hat == 1 ? Hex("E9CF7A") : Clothes[Wrap(data.hatColor + 1, Clothes.Length)];
-        if (n.EndsWith("HatAccent")) return Clothes[Wrap(data.hatColor, Clothes.Length)];
+        if (n.EndsWith("HatMain")) return data.hat == 1 ? Hex("E9CF7A") : Clothes[Wrap(data.hatColor, Clothes.Length)];
+        if (n.EndsWith("HatAccent")) return Clothes[Wrap(data.hatColor + 6, Clothes.Length)];
         if (n.EndsWith("Skin")) return SkinTones[Wrap(data.skin, SkinTones.Length)];
         if (n.EndsWith("Shirt")) return Shirts[Wrap(data.shirt, Shirts.Length)];
         if (n.EndsWith("Outfit")) return Clothes[Wrap(data.outfit, Clothes.Length)];
@@ -126,6 +130,12 @@ public class ChibiLook : MonoBehaviour
     void ShowFace(Face f)
     {
         current = f;
+        // Bean Buddy: one eyebrow + mouth pair per expression
+        foreach (Face e in (Face[])Enum.GetValues(typeof(Face)))
+        {
+            SetActive("Brow_" + e, e == f);
+            SetActive("Mouth_" + e, e == f);
+        }
         var tex = faces != null && (int)f < faces.Length ? faces[(int)f] : null;
         if (tex == null) return;
         mpb ??= new MaterialPropertyBlock();

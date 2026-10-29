@@ -10,6 +10,9 @@ public class WirePuzzle : MonoBehaviour
     public GameObject fuseVisual;       
     public Button fuseSlotButton;       
     public Button mainSwitchButton;     
+    
+    // 🚨 IMPORTANT: Drag your Status Text object into this slot in the Inspector!
+    public TextMeshProUGUI statusText; 
 
     [Header("Manual Book References")]
     public GameObject manualBookPanel;    
@@ -21,26 +24,19 @@ public class WirePuzzle : MonoBehaviour
     public AudioClip openBookSound;
 
     private Dictionary<string, int> wireStates = new Dictionary<string, int> { { "Red", 0 }, { "Blue", 0 }, { "Yellow", 0 } };
-
     private Dictionary<int, string> portStates = new Dictionary<int, string> { { 1, "" }, { 2, "" }, { 3, "" } };
 
     private bool isShuffled = false; 
-
     private PowerBox powerBox;
-    private TextMeshProUGUI statusText;
-    
     private string selectedWire = "";
     private bool isFuseInserted = false;
     private bool puzzleSolved = false;
-
 
     private int correctPortRed, correctPortBlue, correctPortYellow;
 
     void Awake()
     {
         powerBox = FindObjectOfType<PowerBox>();
-        GameObject textObj = GameObject.Find("StatusText");
-        if (textObj != null) statusText = textObj.GetComponent<TextMeshProUGUI>();
     }
 
     void OnEnable()
@@ -54,20 +50,17 @@ public class WirePuzzle : MonoBehaviour
         UpdateManualBook();
         if (manualBookPanel != null) manualBookPanel.SetActive(false);
 
+        // Safely update text
+        if (statusText != null)
+        {
+            if (puzzleSolved) statusText.text = "POWER ON!";
+            else if (!isFuseInserted) statusText.text = "Please insert the fuse first.";
+            else statusText.text = "Select a wire, then pick a port.";
+            
+            statusText.color = Color.white;
+        }
 
-        if (puzzleSolved) statusText.text = "POWER ON!";
-        else if (!isFuseInserted) 
-        {
-            statusText.text = "Please insert the fuse first.";
-            if (fuseVisual != null) fuseVisual.SetActive(false); 
-        }
-        else 
-        {
-            statusText.text = "Select a wire, then pick a port.";
-            if (fuseVisual != null) fuseVisual.SetActive(true);
-        }
-        
-        statusText.color = Color.white;
+        if (fuseVisual != null) fuseVisual.SetActive(isFuseInserted); 
     }
 
     private void ShuffleAnswers()
@@ -98,13 +91,8 @@ public class WirePuzzle : MonoBehaviour
 
     public void OpenManual() 
     { 
-        Debug.Log("🚨 OpenManual was called! Playing sound.");
-        if (manualBookPanel != null) 
-        {
-            manualBookPanel.SetActive(true); 
-        }
+        if (manualBookPanel != null) manualBookPanel.SetActive(true); 
 
-        // 💡 Play the book opening sound
         if (audioSource != null && openBookSound != null)
         {
             audioSource.PlayOneShot(openBookSound);
@@ -116,20 +104,32 @@ public class WirePuzzle : MonoBehaviour
     public void ClickFuseSlot()
     {
         if (isFuseInserted || puzzleSolved) return;
+        
         if (FusePickup.playerHasFuse)
         {
             isFuseInserted = true;
             FusePickup.playerHasFuse = false; 
+            
             if (fuseVisual != null) fuseVisual.SetActive(true);
             if (fuseSlotButton != null) fuseSlotButton.interactable = false; 
-            if (audioSource != null && insertFuseSound != null) audioSource.PlayOneShot(insertFuseSound);
-            statusText.text = "Fuse inserted. Now connect the wires.";
-            statusText.color = Color.green;
+            
+            // Play Audio Safely
+            if (audioSource != null && insertFuseSound != null) 
+                audioSource.PlayOneShot(insertFuseSound);
+            
+            if (statusText != null)
+            {
+                statusText.text = "Fuse inserted. Now connect the wires.";
+                statusText.color = Color.green;
+            }
         }
         else
         {
-            statusText.text = "You don't have a fuse! Find one first.";
-            statusText.color = Color.red;
+            if (statusText != null)
+            {
+                statusText.text = "You don't have a fuse! Find one first.";
+                statusText.color = Color.red;
+            }
         }
     }
 
@@ -137,8 +137,11 @@ public class WirePuzzle : MonoBehaviour
     {
         if (puzzleSolved || !isFuseInserted) 
         {
-            statusText.text = "Insert the fuse first!";
-            statusText.color = Color.red;
+            if (statusText != null)
+            {
+                statusText.text = "Insert the fuse first!";
+                statusText.color = Color.red;
+            }
             return;
         }
 
@@ -151,15 +154,21 @@ public class WirePuzzle : MonoBehaviour
             GameObject lineObj = GameObject.Find("UI_Line_" + color);
             if (lineObj != null) Destroy(lineObj);
 
-            statusText.text = color + " wire unplugged.";
-            statusText.color = Color.white;
+            if (statusText != null)
+            {
+                statusText.text = color + " wire unplugged.";
+                statusText.color = Color.white;
+            }
             selectedWire = "";
             return;
         }
 
         selectedWire = color;
-        statusText.text = "Selected: " + color + " wire. Now pick a port.";
-        statusText.color = Color.yellow;
+        if (statusText != null)
+        {
+            statusText.text = "Selected: " + color + " wire. Now pick a port.";
+            statusText.color = Color.yellow;
+        }
     }
 
     public void ClickPort1() { HandleConnection(1, "Port_1"); }
@@ -172,8 +181,11 @@ public class WirePuzzle : MonoBehaviour
 
         if (string.IsNullOrEmpty(selectedWire))
         {
-            statusText.text = "Pick a wire first!";
-            statusText.color = Color.red;
+            if (statusText != null)
+            {
+                statusText.text = "Pick a wire first!";
+                statusText.color = Color.red;
+            }
             return;
         }
 
@@ -190,22 +202,29 @@ public class WirePuzzle : MonoBehaviour
 
         GameObject wireObj = GameObject.Find("Wire_" + selectedWire);
         GameObject portObj = GameObject.Find(portObjectName);
+        
         if (wireObj != null && portObj != null)
             DrawUILine(selectedWire, wireObj.GetComponent<RectTransform>(), portObj.GetComponent<RectTransform>());
 
-        // 檢查是否全部正確
+        // Check if all are correct
         if (wireStates["Red"] == correctPortRed && 
             wireStates["Blue"] == correctPortBlue && 
             wireStates["Yellow"] == correctPortYellow)
         {
-            statusText.text = "Wiring complete! Now flip the main switch.";
-            statusText.color = Color.green;
+            if (statusText != null)
+            {
+                statusText.text = "Wiring complete! Now flip the main switch.";
+                statusText.color = Color.green;
+            }
             if (mainSwitchButton != null) mainSwitchButton.interactable = true;
         }
         else
         {
-            statusText.text = selectedWire + " connected to Port " + portNumber + ".";
-            statusText.color = Color.white;
+            if (statusText != null)
+            {
+                statusText.text = selectedWire + " connected to Port " + portNumber + ".";
+                statusText.color = Color.white;
+            }
             if (mainSwitchButton != null) mainSwitchButton.interactable = false;
         }
 
@@ -217,8 +236,12 @@ public class WirePuzzle : MonoBehaviour
         if (puzzleSolved || wireStates["Red"] != correctPortRed || wireStates["Blue"] != correctPortBlue || wireStates["Yellow"] != correctPortYellow) return; 
 
         puzzleSolved = true;
-        statusText.text = "POWER ON!";
-        statusText.color = Color.green;
+        
+        if (statusText != null)
+        {
+            statusText.text = "POWER ON!";
+            statusText.color = Color.green;
+        }
         
         if (mainSwitchButton != null) mainSwitchButton.interactable = false;
 
@@ -251,10 +274,7 @@ public class WirePuzzle : MonoBehaviour
         Vector2 endPos = this.transform.InverseTransformPoint(endNode.position);
 
         startPos.y -= 30f; 
-        startPos.x += 0f; 
-
         endPos.y += 30f;   
-        endPos.x += 0f;    
 
         Vector2 dir = endPos - startPos;
         float distance = dir.magnitude;

@@ -12,9 +12,9 @@ public class RopePickup : Interactable
 
     void Start()
     {
-        hintMessage = "Press E to pick up Rope";
+        // 💡 改成簡短的提示文字
+        hintMessage = "Pick up Rope"; 
         
-        // 抓取這個物件底下所有的網格與碰撞體
         meshRenderers = GetComponentsInChildren<MeshRenderer>();
         colliders = GetComponentsInChildren<Collider>();
     }

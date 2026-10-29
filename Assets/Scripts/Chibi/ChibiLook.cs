@@ -35,7 +35,21 @@ public class ChibiLook : MonoBehaviour
     public Data data = new Data();
     public event Action Changed;
 
-    const string Key = "FarmChaos.ChibiLook";
+    // Your look is saved on this device. When testing with Multiplayer Play Mode, every test window is on the
+    // same computer, so each one gets its own save (otherwise all the test players would share one outfit).
+    static string Key => "FarmChaos.ChibiLook" + TestWindowSuffix;
+    static string suffix;
+    static string TestWindowSuffix
+    {
+        get
+        {
+            if (suffix != null) return suffix;
+            string p = Application.dataPath.Replace('\\', '/');
+            int i = p.IndexOf("/Library/VP/");                 // Multiplayer Play Mode virtual player
+            suffix = i >= 0 ? "." + p.Substring(i + 12).Split('/')[0] : "";
+            return suffix;
+        }
+    }
     Face current; float faceUntil = -1f;
     MaterialPropertyBlock mpb;
     readonly Dictionary<string, Transform> parts = new Dictionary<string, Transform>();
@@ -62,7 +76,9 @@ public class ChibiLook : MonoBehaviour
         if (!string.IsNullOrEmpty(json)) { try { JsonUtility.FromJsonOverwrite(json, data); } catch { } }
     }
 
-    public void Save() { PlayerPrefs.SetString(Key, JsonUtility.ToJson(data)); PlayerPrefs.Save(); }
+    /// <summary>Fires when your look is saved (wardrobe Done) - online, it gets shared with the other players.</summary>
+    public static event Action Saved;
+    public void Save() { PlayerPrefs.SetString(Key, JsonUtility.ToJson(data)); PlayerPrefs.Save(); Saved?.Invoke(); }
 
     public static Data LoadSaved()
     {

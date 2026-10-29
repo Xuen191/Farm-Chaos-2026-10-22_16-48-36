@@ -102,11 +102,20 @@ public class PowerLamps : MonoBehaviour
         if (vol != null && vol.profile != null && vol.profile.TryGet(out colorAdj)) baseExposure = colorAdj.postExposure.value;
 
         ElectricGate.PowerChanged += OnPower;
+        instance = this;
         SceneDim = 1f;
         if (!ElectricGate.PowerOn) { foreach (var u in units) { u.level = u.target = 0f; } SceneDim = dimTarget = outageBrightness; }
     }
 
-    void OnDestroy() { ElectricGate.PowerChanged -= OnPower; }
+    void OnDestroy() { ElectricGate.PowerChanged -= OnPower; if (instance == this) instance = null; }
+
+    static PowerLamps instance;
+    /// <summary>Warning before an outage: every lamp flickers for a few seconds (the power stays on).</summary>
+    public static void Warn(float seconds)
+    {
+        if (instance == null) return;
+        foreach (var u in instance.units) { u.startAt = Time.time; u.flickerUntil = Time.time + seconds * Random.Range(0.75f, 1f); }
+    }
 
     void AddUnit(Renderer[] rends, Light[] lights, Vector3 pos)
     {

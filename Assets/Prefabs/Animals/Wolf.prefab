@@ -158,7 +158,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 65401449913374413}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e7e021d804bceb74489e88b15f242c7c, type: 3}
+  m_Script: {fileID: 11500000, guid: 43f06824e430eaf40b3061529b2dacf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EasyPrimitiveAnimals.AnimalController
   FrontLegL: {fileID: 0}

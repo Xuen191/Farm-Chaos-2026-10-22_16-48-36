@@ -42,7 +42,12 @@ public class NetPlayer : NetworkBehaviour
     public Color Colour => Palette[(int)(OwnerClientId % (ulong)Palette.Length)];
 
     Transform follow;
-    float clockTimer;
+    float clockTimer, animalTimer;
+
+    /// <summary>This player's bean look (hair, hat, colours, face) as JSON - set by its owner, seen by everyone.</summary>
+    readonly NetworkVariable<Unity.Collections.FixedString512Bytes> lookJson =
+        new NetworkVariable<Unity.Collections.FixedString512Bytes>(default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    public bool HasLook => lookJson.Value.Length > 0;
     string placedInScene = "";
 
     public override void OnNetworkSpawn()
@@ -55,6 +60,7 @@ public class NetPlayer : NetworkBehaviour
             body.SetPropertyBlock(mpb);
         }
         if (nameTag != null) nameTag.text = "Player " + Number;
+        lookJson.OnValueChanged += (_, v) => ApplyLook(v.ToString());
 
         if (IsOwner)
         {
@@ -67,6 +73,29 @@ public class NetPlayer : NetworkBehaviour
             SceneManager.sceneLoaded += OnSceneLoaded;
             TintLocalBall();
             if (IsServer && NetworkManager.SceneManager != null) NetworkManager.SceneManager.OnLoadEventCompleted += OnSceneLoadedForAll;
+            ShareMyLook();
+            ChibiLook.Saved += ShareMyLook;                  // changed clothes in the wardrobe -> everyone sees it
+        }
+        else ApplyLook(lookJson.Value.ToString());
+    }
+
+    // ------------------------------------------------------------ bean looks
+    void ShareMyLook() { if (IsOwner) lookJson.Value = new Unity.Collections.FixedString512Bytes(JsonUtility.ToJson(ChibiLook.LoadSaved())); }
+
+    public void ReapplyLook() => ApplyLook(lookJson.Value.ToString());
+
+    /// <summary>Dress this (other) player's bean in their own saved look.</summary>
+    public void ApplyLook(string json)
+    {
+        if (IsOwner || string.IsNullOrEmpty(json)) return;
+        StartCoroutine(Soon());
+        IEnumerator Soon()
+        {
+            yield return null;                                // the bean may still be waking up
+            var look = GetComponentInChildren<ChibiLook>(true);
+            if (look == null) yield break;
+            try { JsonUtility.FromJsonOverwrite(json, look.data); } catch { yield break; }
+            look.Apply();
         }
     }
 
@@ -75,6 +104,7 @@ public class NetPlayer : NetworkBehaviour
         if (IsOwner)
         {
             if (Local == this) Local = null;
+            ChibiLook.Saved -= ShareMyLook;
             ElectricGate.PowerChanged -= OnLocalPower;
             GateSwitch.Toggled -= OnLocalGate;
             SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -102,6 +132,13 @@ public class NetPlayer : NetworkBehaviour
                 {
                     clockTimer = 2f;
                     ClockRpc(RoundClock.Instance.Elapsed);
+                }
+                // ...and everyone's animals (the host runs them, the others just play them back)
+                animalTimer -= Time.deltaTime;
+                if (animalTimer <= 0f && AnimalBrain.All.Count > 0)
+                {
+                    animalTimer = 0.1f;
+                    AnimalsRpc(AnimalBrain.Pack());
                 }
             }
         }
@@ -177,6 +214,20 @@ public class NetPlayer : NetworkBehaviour
         }
         finally { ApplyingRemote = false; }
     }
+
+    // ------------------------------------------------------------ farm animals (host -> everyone)
+    [Rpc(SendTo.NotServer, Delivery = RpcDelivery.Unreliable)]
+    void AnimalsRpc(byte[] data) { AnimalBrain.Unpack(data); }
+
+    /// <summary>Host: this player brought an animal home - pay them (coins stay per player).</summary>
+    public void GiveAnimalCoins(int coins, string kind) { if (IsServer) AnimalCoinsRpc(coins, kind); }
+    [Rpc(SendTo.Owner)]
+    void AnimalCoinsRpc(int coins, string kind) { if (CoinWallet.Exists) CoinWallet.Add(coins, kind + " returned"); }
+
+    // ------------------------------------------------------------ unstable power warning (host -> everyone)
+    public void SendPowerWarning(float seconds) { if (IsServer) PowerWarnRpc(seconds); }
+    [Rpc(SendTo.Everyone)]
+    void PowerWarnRpc(float seconds) { PowerGrid.ShowWarning(seconds); }
 
     // ------------------------------------------------------------ gate switches
     void OnLocalGate(string gateName, bool open)

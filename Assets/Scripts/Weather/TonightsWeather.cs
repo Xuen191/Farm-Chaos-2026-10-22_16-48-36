@@ -38,7 +38,7 @@ public class TonightsWeather : MonoBehaviour
         "Calm skies tonight. No excuses!",
         "Slippery mud everywhere - you will slide when you turn!",
         "You can barely see past your nose. Stay close!",
-        "Rain, mud and lightning that lights up the whole farm!",
+        "Rain, mud and lightning - it might even knock the power out!",
         "Strong wind! Walking into it is super slow - and it blows you around.",
         "Every so often the ground shakes and knocks everyone over! Jump to dodge it.",
     };
@@ -283,6 +283,7 @@ public class TonightsWeather : MonoBehaviour
     {
         flashT = 0f;
         Debug.Log("[Farm Chaos] Weather: lightning!");
+        PowerGrid.LightningStrike();          // sometimes it knocks the power out (host decides)
         if (thunderSound != null) StartCoroutine(PlayLater(thunderSound, 0.4f + UnityEngine.Random.value * 0.8f));
     }
 
@@ -463,7 +464,7 @@ public class TonightsWeather : MonoBehaviour
         if (Current == Kind.Clear) Toast("A calm night... for now.", 2.5f);
     }
 
-    void Toast(string msg, float seconds)
+    public void Toast(string msg, float seconds)
     {
         EnsureUI();
         if (toast == null)

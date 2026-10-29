@@ -53,7 +53,11 @@ public class ChibiMotor : MonoBehaviour
         if (player != null) ElectricGate.PowerChanged += OnPower;
         // another player's ball online: dress them in their party colour
         var np = ball != null ? ball.GetComponent<NetPlayer>() : null;
-        if (np != null && look != null) { look.data.outfit = (int)(np.OwnerClientId % 5); look.Apply(); }
+        if (np != null && look != null)
+        {
+            if (np.HasLook) np.ReapplyLook();                                 // already know their look
+            else { look.data.outfit = (int)(np.OwnerClientId % 5); look.Apply(); }   // until their look arrives: party colour
+        }
         listenForEmoteKeys &= player != null;
     }
 

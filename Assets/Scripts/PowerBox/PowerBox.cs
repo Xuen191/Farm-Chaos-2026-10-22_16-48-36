@@ -28,7 +28,6 @@ public class PowerBox : Interactable
         hintMessage = "Press E to open power box"; 
         if(wirePuzzleUI != null) wirePuzzleUI.SetActive(false);
         
-      
         farmLight = FindObjectOfType<FarmLightController>();
         if (farmLight != null) farmLight.TurnOffLight();
     }
@@ -52,8 +51,13 @@ public class PowerBox : Interactable
         
         if (audioSource != null && openBoxSound != null) 
             audioSource.PlayOneShot(openBoxSound);
+            
         if (wirePuzzleUI != null) wirePuzzleUI.SetActive(true);
-        if (InventoryManager.Instance != null) InventoryManager.Instance.ToggleHotbar(false); 
+        
+        // 💡 隱藏快捷欄 (透過名字尋找)
+        GameObject hotbar = GameObject.Find("HotbarPanel");
+        if (hotbar != null) hotbar.SetActive(false);
+
         if (statusText != null) statusText.text = ""; 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -80,9 +84,12 @@ public class PowerBox : Interactable
         if (farmLight != null) farmLight.TurnOnLight();
         if (farmGate != null) farmGate.CloseGate();
 
-
         if (wirePuzzleUI != null) wirePuzzleUI.SetActive(false);
-        if (InventoryManager.Instance != null) InventoryManager.Instance.ToggleHotbar(true);
+        
+        // 💡 顯示快捷欄
+        GameObject hotbar = GameObject.Find("HotbarPanel");
+        if (hotbar != null) hotbar.SetActive(true);
+
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         if (statusText != null) statusText.text = "POWER ON";

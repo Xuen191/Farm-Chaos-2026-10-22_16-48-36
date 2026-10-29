@@ -13,14 +13,7 @@ public class ShopInteract : Interactable
     {
         if (shopManager != null)
         {
-
-            shopManager.OpenShop();
-
-
-            if (InventoryManager.Instance != null)
-            {
-                InventoryManager.Instance.ToggleHotbar(false);
-            }
+            shopManager.OpenShop(); // 這裡面已經會自動隱藏快捷欄了
         }
     }
 }

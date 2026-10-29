@@ -5,6 +5,12 @@ using UnityEngine;
 
 public class ItemEffects : MonoBehaviour
 {
+    [Header("Baits (Food)")]
+    public GameObject chickenFeedPrefab;
+    public GameObject pigSlopPrefab;
+    public GameObject freshHayPrefab;
+    public float foodThrowForce = 200f;
+
     [Header("Coffee")]
     public float coffeeSpeedBoost = 1.5f;
     public float coffeeSeconds = 10f;
@@ -27,7 +33,6 @@ public class ItemEffects : MonoBehaviour
     [Header("Magic Whistle")]
     public float whistleRadius = 15f;
     public float whistleCooldown = 20f; 
-    public GameObject whistleEffectPrefab;
     
     private float nextWhistleTime = 0f;
 
@@ -78,10 +83,21 @@ public class ItemEffects : MonoBehaviour
                 return true;
 
             case "Chicken Feed":
+                if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
+                ThrowFood(chickenFeedPrefab, p, "Chicken Feed"); 
+                message = "Dropped chicken feed!";
+                return true;
+
             case "Pig Slop":
+                if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
+                ThrowFood(pigSlopPrefab, p, "Pig Slop");
+                message = "Dropped pig slop!";
+                return true;
+
             case "Fresh Hay":
                 if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
-                message = "Dropped food!";
+                ThrowFood(freshHayPrefab, p, "Fresh Hay");
+                message = "Dropped fresh hay!";
                 return true;
 
             case "Meaty Bone":
@@ -90,24 +106,17 @@ public class ItemEffects : MonoBehaviour
                 return true;
 
             case "Magic Whistle":
-                // 💡 檢查冷卻時間
                 if (Time.time < nextWhistleTime)
                 {
                     float timeLeft = Mathf.Ceil(nextWhistleTime - Time.time);
                     message = "Whistle cooling down... (" + timeLeft + "s)";
-                    return false; // 回傳 false，不消耗數量
+                    return false;
                 }
 
                 nextWhistleTime = Time.time + whistleCooldown;
                 
                 if (whistleSound != null) AudioSource.PlayClipAtPoint(whistleSound, p.transform.position);
 
-                if (whistleEffectPrefab != null)
-                {
-                    GameObject effect = Instantiate(whistleEffectPrefab, p.transform.position, Quaternion.identity);
-                    effect.transform.SetParent(p.transform);
-                    Destroy(effect, 2f);
-                }
 
                 Collider[] animals = Physics.OverlapSphere(p.transform.position, whistleRadius, LayerMask.GetMask("Animal"));
                 foreach (var animal in animals)
@@ -140,6 +149,8 @@ public class ItemEffects : MonoBehaviour
     {
         if (Time.time < goggleUntil) { goggleUntil += goggleSeconds; yield break; }
         goggleUntil = Time.time + goggleSeconds + 0.5f;
+
+        if (wearGogglesSound != null) AudioSource.PlayClipAtPoint(wearGogglesSound, p.transform.position);
 
         if (nightVisionTimerText != null) 
         {
@@ -216,5 +227,34 @@ public class ItemEffects : MonoBehaviour
         }
         Destroy(flash.gameObject);
         if (puff != null) Destroy(puff);
+    }
+
+    private void ThrowFood(GameObject prefab, SpherePlayer p, string itemName)
+    {
+        if (prefab == null) return;
+
+        var cam = Camera.main;
+        Vector3 fwd = cam != null ? Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized : p.transform.forward;
+
+        Vector3 spawnPos = p.transform.position + fwd * 1f + Vector3.up * 0.5f;
+        
+        GameObject food = Instantiate(prefab, spawnPos, Quaternion.identity);
+        
+        Rigidbody rb = food.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            Vector3 throwDir = (fwd + Vector3.up * 0.3f).normalized;
+            rb.AddForce(throwDir * foodThrowForce);
+        }
+
+        // 💡 動態加上撿取腳本！
+        DroppedFood pickupScript = food.AddComponent<DroppedFood>();
+        pickupScript.itemName = itemName; // 告訴它這是什麼食物
+
+        // 💡 確保它有 Collider，這樣 ProximityInteractor 才抓得到
+        if (food.GetComponent<Collider>() == null)
+        {
+            food.AddComponent<BoxCollider>();
+        }
     }
 }

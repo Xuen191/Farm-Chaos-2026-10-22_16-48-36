@@ -100498,15 +100498,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 894d0aa8e49b6c949a3c3b17d7f66463, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemEffects
-<<<<<<< HEAD
-  chickenFeedPrefab: {fileID: 919132149155446097, guid: 52e5182ed739cea4085161b373f802ed, type: 3}
-  pigSlopPrefab: {fileID: 7957380673636414327, guid: f99061cd788c2594088eaef37ae631c5, type: 3}
-  freshHayPrefab: {fileID: 919132149155446097, guid: 4e8c83e1a4e8fb14493caa85084e0490, type: 3}
-=======
   chickenFeedPrefab: {fileID: 0}
   pigSlopPrefab: {fileID: 0}
   freshHayPrefab: {fileID: 0}
->>>>>>> 4e8e4974048d27c5e5962c31bfa38477ece0bbe0
   foodThrowForce: 200
   coffeeSpeedBoost: 1.5
   coffeeSeconds: 10

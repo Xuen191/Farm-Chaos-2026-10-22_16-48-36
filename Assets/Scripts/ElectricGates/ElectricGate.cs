@@ -110,6 +110,9 @@ public class ElectricGate : MonoBehaviour
         StartCoroutine(PopRoutine());
     }
 
+    /// <summary>Open if closed, close if open (used by the gate switch box).</summary>
+    public void Toggle() { if (IsOpen) Close(); else PopOpen(); }
+
     public void Close()
     {
         if (!IsOpen) return;
@@ -171,7 +174,7 @@ public class ElectricGate : MonoBehaviour
             }
             yield return null;
         }
-        SetWires(true);
+        SetWires(PowerOn);
     }
 
     void Apply(Leaf l)

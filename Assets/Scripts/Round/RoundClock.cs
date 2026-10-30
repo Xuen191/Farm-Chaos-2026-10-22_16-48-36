@@ -65,6 +65,9 @@ public class RoundClock : MonoBehaviour
         HourChanged?.Invoke(lastHour);
     }
 
+    /// <summary>Online: snap to the host's clock.</summary>
+    public void SyncTo(float elapsed) { if (!Finished) Elapsed = Mathf.Clamp(elapsed, 0f, roundLengthSeconds); }
+
     public void Pause(bool paused) { if (!Finished) Running = !paused; }
 
     void Update()

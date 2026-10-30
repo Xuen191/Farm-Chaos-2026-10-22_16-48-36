@@ -232,7 +232,6 @@ public class ItemEffects : MonoBehaviour
 
     IEnumerator Poof(Vector3 at)
     {
-        // 💡 播放爆炸音效
         if (bombExplodeSound != null) AudioSource.PlayClipAtPoint(bombExplodeSound, at);
 
         var flash = new GameObject("Bomb_Flash").AddComponent<Light>();
@@ -280,11 +279,9 @@ public class ItemEffects : MonoBehaviour
             rb.AddForce(throwDir * foodThrowForce);
         }
 
-        // 💡 動態加上撿取腳本！
         DroppedFood pickupScript = food.AddComponent<DroppedFood>();
-        pickupScript.itemName = itemName; // 告訴它這是什麼食物
+        pickupScript.itemName = itemName;
 
-        // 💡 確保它有 Collider，這樣 ProximityInteractor 才抓得到
         if (food.GetComponent<Collider>() == null)
         {
             food.AddComponent<BoxCollider>();

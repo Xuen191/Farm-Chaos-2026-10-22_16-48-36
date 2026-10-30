@@ -4,15 +4,17 @@ using System.Collections;
 public class RopePickup : Interactable
 {
     [Header("Settings")]
-    public float respawnTime = 10f; // 繩子多久後重生
+    public float respawnTime = 10f;
     private bool isPickedUp = false;
     
     private MeshRenderer[] meshRenderers;
     private Collider[] colliders;
 
+    [Header("Audio")]
+    public AudioClip pickupSound;
+
     void Start()
     {
-        // 💡 改成簡短的提示文字
         hintMessage = "Pick up Rope"; 
         
         meshRenderers = GetComponentsInChildren<MeshRenderer>();
@@ -35,6 +37,11 @@ public class RopePickup : Interactable
                 }
             }
 
+            if (pickupSound != null) 
+{
+    AudioSource.PlayClipAtPoint(pickupSound, transform.position);
+}
+
             if (!alreadyHasRope)
             {
                 Sprite icon = Resources.Load<Sprite>("Icon/Rope");
@@ -42,7 +49,7 @@ public class RopePickup : Interactable
             }
 
             ItemBarUI barUI = FindObjectOfType<ItemBarUI>();
-            if (barUI != null) barUI.Toast("🪢 Got a Rope! Use it to tie the Spy.");
+            if (barUI != null) barUI.Toast("Got a Rope! Use it to tie the Spy.");
         }
 
         GameObject player = GameObject.FindWithTag("Player");

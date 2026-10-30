@@ -1,17 +1,16 @@
 using UnityEngine;
 using System.Collections;
-using TMPro;
+using Unity.Netcode;
 
 public class RopeAbility : MonoBehaviour
 {
     [Header("Settings")]
-    public float tieRadius = 4f;         
-    public float tieDuration = 20f;
+    public float tieRadius = 6f;         
+    public float tieDuration = 20f;      
 
     [Header("Visuals & Audio")]
-    public Material ropeMaterial;      
+    public Material ropeMaterial;        
     public AudioClip tieSound;           
-    public GameObject tiedTextPrefab;    
 
     private bool hasRope = false;
     private bool isTying = false; 
@@ -25,98 +24,122 @@ public class RopeAbility : MonoBehaviour
     public bool TryTieSpy(out string errorMessage)
     {
         errorMessage = "";
-
-        if (!hasRope)
-        {
-            errorMessage = "You need to find a rope first!";
-            return false; 
-        }
-
-        if (isTying) 
-        {
-            errorMessage = "You are already tying someone!";
-            return false; 
-        }
+        if (!hasRope) { errorMessage = "⚠️ Find a rope first!"; return false; }
+        if (isTying) { errorMessage = "⚠️ Already tying someone!"; return false; }
 
         Collider[] allPlayers = Physics.OverlapSphere(transform.position, tieRadius);
-        
         Transform targetSpy = null;
+
+        // 💡 尋找間諜：比對 NetPlayer 的間諜 ID
         foreach (var col in allPlayers)
         {
             Transform root = col.transform.root; 
-            if (root.GetComponent<SpyTag>() != null)
+            NetworkObject netObj = root.GetComponent<NetworkObject>();
+            if (netObj != null)
             {
-                targetSpy = root;
-                break;
+                // 如果這個人的 ClientID 等於伺服器指定的間諜 ID
+                if (NetPlayer.SpyClientId != ulong.MaxValue && netObj.OwnerClientId == NetPlayer.SpyClientId)
+                {
+                    targetSpy = root; 
+                    break;
+                }
             }
         }
 
+        if (targetSpy == null) { errorMessage = "⚠️ No spy nearby to tie!"; return false; }
 
-        if (targetSpy == null)
+        if (tieSound != null) AudioSource.PlayClipAtPoint(tieSound, targetSpy.position);
+
+        NetworkObject targetNetObj = targetSpy.GetComponent<NetworkObject>();
+        if (targetNetObj == null) { errorMessage = "⚠️ Target has no NetworkObject!"; return false; }
+
+        // 💡 發送 RPC 給所有人，大家各自去抓那個 ID
+        if (NetworkManager.Singleton != null)
         {
-            errorMessage = "No spy nearby to tie!";
-            return false; 
+            if (NetworkManager.Singleton.IsServer)
+                TieSpyClientRpc(targetNetObj.OwnerClientId, tieDuration);
+            else
+                TieSpyServerRpc(targetNetObj.OwnerClientId, tieDuration);
         }
-
-        
-        if (tieSound != null)
-            AudioSource.PlayClipAtPoint(tieSound, targetSpy.position);
-
-        StartCoroutine(TieRoutine(targetSpy.gameObject));
+        else
+        {
+            StartTieVisuals(targetSpy.gameObject, tieDuration);
+        }
         
         return true; 
     }
 
-    private IEnumerator TieRoutine(GameObject target)
+    [Rpc(SendTo.Server)]
+    void TieSpyServerRpc(ulong spyClientId, float duration) 
+    { 
+        TieSpyClientRpc(spyClientId, duration); 
+    }
+
+    [Rpc(SendTo.Everyone)]
+    void TieSpyClientRpc(ulong spyClientId, float duration)
     {
-        isTying = true;
-
-        GameObject ropeObj = new GameObject("RopeVisual");
-        LineRenderer lr = ropeObj.AddComponent<LineRenderer>();
-        lr.positionCount = 2;
-        lr.startWidth = 0.1f;
-        lr.endWidth = 0.1f;
-        if (ropeMaterial != null) lr.material = ropeMaterial;
-        else lr.material = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(0.4f, 0.2f, 0.1f) };
-
-        GameObject tiedUI = null;
-        if (tiedTextPrefab != null)
+        // 💡 所有玩家的電腦都會收到這個指令，然後在場景中尋找那個 ClientID 的玩家
+        foreach (var np in FindObjectsByType<NetworkObject>(FindObjectsSortMode.None))
         {
-            tiedUI = Instantiate(tiedTextPrefab, target.transform.position + Vector3.up * 2f, Quaternion.identity);
-        }
-
-        Rigidbody rb = target.GetComponent<Rigidbody>();
-        if (rb != null) { rb.linearVelocity = Vector3.zero; rb.isKinematic = true; }
-
-        SpherePlayer spyMovement = target.GetComponent<SpherePlayer>();
-        if (spyMovement != null) spyMovement.enabled = false;
-
-        float timer = tieDuration;
-
-        while (timer > 0f)
-        {
-            timer -= Time.deltaTime;
-
-            lr.SetPosition(0, transform.root.position + Vector3.up * 0.5f);
-            lr.SetPosition(1, target.transform.position + Vector3.up * 0.5f);
-
-            if (tiedUI != null)
+            if (np.OwnerClientId == spyClientId)
             {
-                tiedUI.transform.position = target.transform.position + Vector3.up * 2f;
-                var textMesh = tiedUI.GetComponentInChildren<TextMeshPro>();
-                if (textMesh != null) textMesh.text = "Tied: " + Mathf.CeilToInt(timer) + "s";
+                GameObject target = np.gameObject;
+                StartTieVisuals(target, duration);
+                break;
             }
+        }
+    }
 
-            yield return null;
+    void StartTieVisuals(GameObject target, float duration)
+    {
+        if (target.transform.Find("RopeVisual") != null) return; 
+
+        // 💡 1. 暴力停用他的移動腳本（絕對定住！）
+        SpherePlayer spyMove = target.GetComponent<SpherePlayer>();
+        if (spyMove != null) 
+        {
+            spyMove.enabled = false; // 直接關閉！
         }
 
-        if (rb != null) rb.isKinematic = false;
-        if (spyMovement != null) spyMovement.enabled = true; 
+        // 💡 2. 鎖住他的物理
+        Rigidbody rb = target.GetComponent<Rigidbody>();
+        if (rb != null) 
+        { 
+            rb.linearVelocity = Vector3.zero; 
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = true; 
+        }
 
-        Destroy(ropeObj);
-        if (tiedUI != null) Destroy(tiedUI);
+        // 💡 3. 生成視覺繩子
+        GameObject ropeVisual = new GameObject("RopeVisual");
+        ropeVisual.transform.SetParent(target.transform);
+        ropeVisual.transform.localPosition = Vector3.zero; 
+
+        GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        Destroy(ring.GetComponent<Collider>()); 
+        ring.transform.SetParent(ropeVisual.transform, false);
+        ring.transform.localScale = new Vector3(1.2f, 0.05f, 1.2f); 
+        ring.transform.localPosition = Vector3.zero; 
         
-        isTying = false;
-        hasRope = true; 
+        Renderer rend = ring.GetComponent<Renderer>();
+        Material mat = ropeMaterial != null ? ropeMaterial : new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(0.4f, 0.2f, 0.1f) };
+        rend.material = mat;
+
+        // 💡 4. 啟動計時器，時間到自動解除
+        StartCoroutine(UnlockAfterTime(target, ropeVisual, duration));
+    }
+
+    IEnumerator UnlockAfterTime(GameObject target, GameObject rope, float duration)
+    {
+        yield return new WaitForSeconds(duration);
+
+        if (rope != null) Destroy(rope);
+
+        // 💡 解除物理鎖與恢復腳本
+        Rigidbody rb = target.GetComponent<Rigidbody>();
+        if (rb != null) rb.isKinematic = false;
+        
+        SpherePlayer spyMove = target.GetComponent<SpherePlayer>();
+        if (spyMove != null) spyMove.enabled = true; // 恢復移動
     }
 }

@@ -420,6 +420,9 @@ public class AnimalBrain : MonoBehaviour
             float yaw = r.ReadInt16() / 10f; float spd = r.ReadByte() / 20f; var st = (State)r.ReadByte();
             if (i >= list.Count) continue;
             var a = list[i];
+
+            if (a == null) continue;
+            
             if (!a.hasNet) { a.transform.position = p; a.transform.rotation = Quaternion.Euler(0f, yaw, 0f); }
             a.netPos = p; a.netYaw = yaw; a.netSpeed = spd; a.state = st; a.hasNet = true;
         }

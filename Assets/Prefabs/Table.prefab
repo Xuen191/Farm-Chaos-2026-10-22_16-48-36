@@ -734,6 +734,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 5751374804206233543}
     m_Modifications:
+    - target: {fileID: 4320956796404369110, guid: 67bcb7ce2fa61104bbb4e9187d0fb2af, type: 3}
+      propertyPath: pickupSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 9f2025395b5f7414898953bfc3d4ca76, type: 3}
     - target: {fileID: 4717219898674686282, guid: 67bcb7ce2fa61104bbb4e9187d0fb2af, type: 3}
       propertyPath: m_Name
       value: BaseBallStick
@@ -872,3 +876,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RopePickup
   hintMessage: Press E to interact
   respawnTime: 10
+  pickupSound: {fileID: 8300000, guid: 9f2025395b5f7414898953bfc3d4ca76, type: 3}

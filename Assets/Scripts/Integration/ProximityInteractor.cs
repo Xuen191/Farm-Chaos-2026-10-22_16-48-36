@@ -71,6 +71,15 @@ public class ProximityInteractor : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E)) ePressed = true;
 #endif
         if (ePressed) Use();
+
+                if (Input.GetMouseButtonDown(1)) 
+        {
+            StickPickup pickup = FindObjectOfType<StickPickup>();
+            if (pickup != null)
+            {
+                pickup.DropStick(gameObject);
+            }
+        }
     }
 
     void LateUpdate()

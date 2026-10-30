@@ -637,6 +637,32 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 11854056}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &12364241 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 922405890962557283, guid: 988a5f82e9edb4342bc2366a2ba83a34, type: 3}
+  m_PrefabInstance: {fileID: 1120824545}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &12364247
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 12364241}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.008, y: 0.008, z: 0.002}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &13023296
 GameObject:
   m_ObjectHideFlags: 0
@@ -1533,7 +1559,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 5.35
+  m_fontSize: 4.3
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -15747,32 +15773,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 272895308}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &273955737 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3154822525869327850, guid: 988a5f82e9edb4342bc2366a2ba83a34, type: 3}
-  m_PrefabInstance: {fileID: 1120824545}
-  m_PrefabAsset: {fileID: 0}
---- !u!65 &273955743
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 273955737}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.007489578, y: 0.0062744385, z: 0.001598961}
-  m_Center: {x: -0.0012420553, y: -0.0011830982, z: 0.00051900547}
 --- !u!43 &274330601
 Mesh:
   m_ObjectHideFlags: 0
@@ -42509,7 +42509,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 5.35
+  m_fontSize: 4.3
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -53857,8 +53857,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 215, y: 430}
-  m_SizeDelta: {x: 456.2355, y: 50}
+  m_AnchoredPosition: {x: 225, y: 435}
+  m_SizeDelta: {x: 524.47, y: 61.867}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &882561596
 MonoBehaviour:
@@ -53907,8 +53907,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 40
+  m_fontSizeBase: 40
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -70670,12 +70670,13 @@ PrefabInstance:
     m_RemovedComponents:
     - {fileID: 643331130100518579, guid: 988a5f82e9edb4342bc2366a2ba83a34, type: 3}
     - {fileID: 5289629217542500570, guid: 988a5f82e9edb4342bc2366a2ba83a34, type: 3}
+    - {fileID: 3452210716265480762, guid: 988a5f82e9edb4342bc2366a2ba83a34, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 3154822525869327850, guid: 988a5f82e9edb4342bc2366a2ba83a34, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 922405890962557283, guid: 988a5f82e9edb4342bc2366a2ba83a34, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 273955743}
+      addedObject: {fileID: 12364247}
     - targetCorrespondingSourceObject: {fileID: 7659837507846404995, guid: 988a5f82e9edb4342bc2366a2ba83a34, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1712219055}
@@ -72285,7 +72286,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 3.55
+  m_fontSize: 2.85
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -82264,7 +82265,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 7.15
+  m_fontSize: 6.8
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -86541,7 +86542,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -900, y: 480}
+  m_AnchoredPosition: {x: -885, y: 477}
   m_SizeDelta: {x: 80, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1402855301
@@ -92932,6 +92933,8 @@ GameObject:
   - component: {fileID: 1507540049}
   - component: {fileID: 1507540054}
   - component: {fileID: 1507540055}
+  - component: {fileID: 1507540057}
+  - component: {fileID: 1507540056}
   m_Layer: 0
   m_Name: Player_Sphere
   m_TagString: Player
@@ -92954,6 +92957,7 @@ Transform:
   m_Children:
   - {fileID: 1879125354}
   - {fileID: 873905406}
+  - {fileID: 1984857900}
   m_Father: {fileID: 1399595593}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1507540049
@@ -93121,6 +93125,35 @@ MonoBehaviour:
   hitSound: {fileID: 8300000, guid: 99cec951b62948f4d9bba8afd95e55ba, type: 3}
   hasStick: 0
   hintText: {fileID: 0}
+--- !u!114 &1507540056
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507540047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7ff6caf88f729d40858f31a7c49320a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpyTag
+--- !u!114 &1507540057
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507540047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 022a1df137395ad4c85eff18c0bf920f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RopeAbility
+  tieRadius: 4
+  tieDuration: 20
+  ropeMaterial: {fileID: 2100000, guid: 3db44012f13458741b5dbaac21bd10ab, type: 2}
+  tieSound: {fileID: 8300000, guid: f18c24a223d43c441837d0b79d7d3226, type: 3}
+  tiedTextPrefab: {fileID: 7561582508483948535, guid: 33a0572231b3d5249be153c32424df75, type: 3}
 --- !u!1 &1508179194
 GameObject:
   m_ObjectHideFlags: 0
@@ -93572,8 +93605,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 215, y: 380}
-  m_SizeDelta: {x: 517.2717, y: 50.8968}
+  m_AnchoredPosition: {x: 244.5, y: 370}
+  m_SizeDelta: {x: 662.64, y: 65.73}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1513009498
 MonoBehaviour:
@@ -93622,8 +93655,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 28
-  m_fontSizeBase: 28
+  m_fontSize: 32
+  m_fontSizeBase: 32
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -94987,7 +95020,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 1011, y: -417}
+  m_AnchoredPosition: {x: 974, y: -417}
   m_SizeDelta: {x: 50, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1535060424
@@ -100498,9 +100531,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 894d0aa8e49b6c949a3c3b17d7f66463, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemEffects
-  chickenFeedPrefab: {fileID: 0}
-  pigSlopPrefab: {fileID: 0}
-  freshHayPrefab: {fileID: 0}
+  chickenFeedPrefab: {fileID: 919132149155446097, guid: 52e5182ed739cea4085161b373f802ed, type: 3}
+  pigSlopPrefab: {fileID: 7957380673636414327, guid: f99061cd788c2594088eaef37ae631c5, type: 3}
+  freshHayPrefab: {fileID: 919132149155446097, guid: 4e8c83e1a4e8fb14493caa85084e0490, type: 3}
   foodThrowForce: 200
   coffeeSpeedBoost: 1.5
   coffeeSeconds: 10
@@ -124019,7 +124052,7 @@ GameObject:
   - component: {fileID: 1964498105}
   - component: {fileID: 1964498104}
   m_Layer: 5
-  m_Name: SheepBait
+  m_Name: FreshHay
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -124091,7 +124124,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 33952678}
         m_TargetAssemblyTypeName: ShopManager, Assembly-CSharp
-        m_MethodName: Btn_ClickSheepBait
+        m_MethodName: Btn_ClickFreshHay
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -125000,6 +125033,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6239969156481072347, guid: b71b0f8d2f881c743a85228f3030d1cb, type: 3}
   m_PrefabInstance: {fileID: 1979592036}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1984857899
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1984857900}
+  m_Layer: 0
+  m_Name: StickHolder
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1984857900
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1984857899}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.8, y: 0.5, z: 0.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1507540048}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1985012650
 GameObject:
   m_ObjectHideFlags: 0
@@ -128703,7 +128767,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 7.15
+  m_fontSize: 6.8
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -132408,7 +132472,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 3.05
+  m_fontSize: 2.9
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1

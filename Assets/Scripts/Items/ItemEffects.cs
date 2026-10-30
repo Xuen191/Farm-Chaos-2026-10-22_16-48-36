@@ -36,7 +36,6 @@ public class ItemEffects : MonoBehaviour
     
     private float nextWhistleTime = 0f;
 
-    // 💡 新增：音效設定區
     [Header("Audio Settings")]
     public AudioClip bombExplodeSound;
     public AudioClip foodDropSound;
@@ -56,7 +55,6 @@ public class ItemEffects : MonoBehaviour
     {
         var p = Player;
         
-        // 💡 先給 message 一個預設值，防止報錯
         message = "Can't use that here."; 
         
         if (p == null) 
@@ -117,14 +115,49 @@ public class ItemEffects : MonoBehaviour
                 
                 if (whistleSound != null) AudioSource.PlayClipAtPoint(whistleSound, p.transform.position);
 
-
                 Collider[] animals = Physics.OverlapSphere(p.transform.position, whistleRadius, LayerMask.GetMask("Animal"));
-                foreach (var animal in animals)
+                
+                if (animals.Length == 0)
                 {
-                    Debug.Log("🐑 動物被口哨吸引了：" + animal.name);
+                    message = "Whistle blown, but no animals nearby!";
+                }
+                else
+                {
+                    string attractedAnimals = "";
+                    foreach (var animal in animals)
+                    {
+                        Debug.Log("動物被口哨吸引了：" + animal.name);
+                        
+                        if (attractedAnimals == "") attractedAnimals = animal.name;
+                        else attractedAnimals += ", " + animal.name;
+                    }
+
+                    message = "Attracted: " + attractedAnimals;
                 }
 
-                message = "Whistle blown!";
+                return false; 
+
+            case "Rope":
+                if (p == null) { message = "No player!"; return false; }
+                
+                RopeAbility rope = p.GetComponent<RopeAbility>();
+                if (rope != null)
+                {
+                    string errorMsg;
+                    bool success = rope.TryTieSpy(out errorMsg); 
+                    
+                    if (success)
+                    {
+                        message = "Tied the spy!"; 
+                        return true;
+                    }
+                    else
+                    {
+                        message = errorMsg;
+                        return false;
+                    }
+                }
+                message = "Can't use rope here.";
                 return false;
 
             default:

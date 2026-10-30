@@ -41,6 +41,7 @@ public class SpherePlayer : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.maxAngularVelocity = 50f;
+
         var sc = GetComponent<SphereCollider>();
         radius = sc != null ? sc.radius * transform.lossyScale.x : 0.5f;
         spawnPoint = transform.position;

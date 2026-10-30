@@ -23,11 +23,37 @@ public class RopePickup : Interactable
     {
         if (isPickedUp) return;
 
-        Debug.Log("🪢 撿起了繩子！");
+        if (Inventory.Instance != null)
+        {
+            bool alreadyHasRope = false;
+            for (int i = 0; i < Inventory.Instance.slots.Length; i++)
+            {
+                if (!Inventory.Instance.slots[i].IsEmpty && Inventory.Instance.slots[i].item == "Rope")
+                {
+                    alreadyHasRope = true;
+                    break;
+                }
+            }
+
+            if (!alreadyHasRope)
+            {
+                Sprite icon = Resources.Load<Sprite>("Icon/Rope");
+                Inventory.Instance.Add("Rope", icon);
+            }
+
+            ItemBarUI barUI = FindObjectOfType<ItemBarUI>();
+            if (barUI != null) barUI.Toast("🪢 Got a Rope! Use it to tie the Spy.");
+        }
+
+        GameObject player = GameObject.FindWithTag("Player");
+        if (player != null)
+        {
+            RopeAbility ropeAbility = player.GetComponent<RopeAbility>();
+            if (ropeAbility != null) ropeAbility.PickUpRope();
+        }
 
         isPickedUp = true;
         SetVisuals(false);
-
         StartCoroutine(RespawnRoutine());
     }
 

@@ -28,6 +28,8 @@ public class StickPickup : Interactable
 
         if (playerObj != null)
         {
+
+            Transform handAnchor = playerObj.transform.Find("StickHolder");
             // 生成木棍模型
             GameObject newModel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             newModel.name = "MyHandheldStickModel";

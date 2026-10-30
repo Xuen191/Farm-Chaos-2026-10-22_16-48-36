@@ -89353,7 +89353,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73ab6daeeb526654893567ec67259c8e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CoinWallet
-  startCoins: 30
+  startCoins: 200
 --- !u!114 &1610702957
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -89366,6 +89366,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 894d0aa8e49b6c949a3c3b17d7f66463, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemEffects
+  chickenFeedPrefab: {fileID: 919132149155446097, guid: 52e5182ed739cea4085161b373f802ed, type: 3}
+  pigSlopPrefab: {fileID: 7957380673636414327, guid: f99061cd788c2594088eaef37ae631c5, type: 3}
+  freshHayPrefab: {fileID: 919132149155446097, guid: 4e8c83e1a4e8fb14493caa85084e0490, type: 3}
+  foodThrowForce: 200
   coffeeSpeedBoost: 1.5
   coffeeSeconds: 10
   goggleSeconds: 25
@@ -89379,12 +89383,11 @@ MonoBehaviour:
   meatThrowForce: 400
   whistleRadius: 15
   whistleCooldown: 20
-  whistleEffectPrefab: {fileID: 0}
   bombExplodeSound: {fileID: 8300000, guid: d2178361493d01947b220a0194b08cee, type: 3}
   foodDropSound: {fileID: 8300000, guid: d06cdd931a241374ab2377940c45ad92, type: 3}
   whistleSound: {fileID: 8300000, guid: 18822a36bb5a17e4f88010e666e47300, type: 3}
   meatDropSound: {fileID: 8300000, guid: 147999c1aa8ae284698346325ad68536, type: 3}
-  wearGogglesSound: {fileID: 8300000, guid: f40719d79062c2c4697e0d9e334de4fa, type: 3}
+  wearGogglesSound: {fileID: 8300000, guid: 44f68f965efaf6047a88a1554ce88270, type: 3}
   coffeeDrinkSound: {fileID: 8300000, guid: 9b90f4b7ba6719546988bbccad0466b0, type: 3}
 --- !u!114 &1610702958
 MonoBehaviour:

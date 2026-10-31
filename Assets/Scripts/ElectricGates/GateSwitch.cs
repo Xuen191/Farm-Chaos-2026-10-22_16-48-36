@@ -44,8 +44,8 @@ public class GateSwitch : Interactable
         bool open = gate != null && gate.IsOpen;
 
         hintMessage = !power ? $"No power! Fix the power box to work the {penName} gate."
-                    : open ? $"Press E to close the {penName} gate"
-                           : $"Press E to open the {penName} gate";
+                    : open ? $"Tap USE to close the {penName} gate"
+                           : $"Tap USE to open the {penName} gate";
 
         if (lamp != null)
         {

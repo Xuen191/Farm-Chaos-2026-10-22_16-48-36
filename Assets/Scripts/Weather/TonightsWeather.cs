@@ -101,7 +101,27 @@ public class TonightsWeather : MonoBehaviour
     float toastUntil;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { Instance = null; HasRolled = false; Showing = false; pendingKind = -1; Decided = null; }
+    static void ResetStatics() { Instance = null; HasRolled = false; Showing = false; pendingKind = -1; Decided = null; PresetKind = -1; FromIntro = false; }
+
+    // ---------------------------------------------------------------- picked in the lobby (the story intro shows it)
+    /// <summary>Tonight's weather, already rolled in the lobby so the story intro can show it. -1 = not yet.</summary>
+    public static int PresetKind { get; private set; } = -1;
+    static int presetSeed;
+    public static bool HasPreset => PresetKind >= 0;
+    /// <summary>Set by the story intro: the farm then skips the spinning card (you've seen the weather already).</summary>
+    public static bool FromIntro;
+    public static void Preset(int kind, int seed) { PresetKind = kind; presetSeed = seed; }
+
+    /// <summary>Roll the weather before the farm exists (lobby). Same odds as the default Tonights_Weather settings.</summary>
+    public static (int kind, int seed) RollForIntro()
+    {
+        int s = UnityEngine.Random.Range(1, int.MaxValue);
+        int[] odds = { 25, 20, 18, 12, 15, 10 };   // clear, rain, fog, thunder, windy, quake
+        int total = 0; foreach (var o in odds) total += o;
+        int r = UnityEngine.Random.Range(0, total);
+        for (int i = 0; i < odds.Length; i++) { r -= odds[i]; if (r < 0) return (i, s); }
+        return (0, s);
+    }
 
     void Awake() { Instance = this; HasRolled = false; Showing = false; }
 
@@ -133,8 +153,9 @@ public class TonightsWeather : MonoBehaviour
     {
         int s = UnityEngine.Random.Range(1, int.MaxValue);
         var w = Instance != null ? Instance : FindAnyObjectByType<TonightsWeather>();
+        if (w != null && w.forceWeather) return ((int)w.forced, s);
+        if (HasPreset) { var p = (PresetKind, presetSeed); PresetKind = -1; return p; }   // rolled in the lobby for the intro
         if (w == null) return (0, s);
-        if (w.forceWeather) return ((int)w.forced, s);
         int[] odds = { w.clearChance, w.rainChance, w.fogChance, w.thunderChance, w.windChance, w.quakeChance };
         int total = 0; foreach (var o in odds) total += Mathf.Max(0, o);
         int r = UnityEngine.Random.Range(0, Mathf.Max(1, total));
@@ -153,10 +174,12 @@ public class TonightsWeather : MonoBehaviour
     {
         if (HasRolled) return;
         HasRolled = true; Current = kind; seed = s;
+        PresetKind = -1;
         Showing = true;
         Decided?.Invoke(kind);
         StopAllCoroutines();
-        StartCoroutine(RollCard());
+        if (FromIntro) { FromIntro = false; StartCoroutine(QuietStart()); }
+        else StartCoroutine(RollCard());
     }
 
     // ================================================================ effects
@@ -462,6 +485,15 @@ public class TonightsWeather : MonoBehaviour
         Destroy(rootGo);
         Showing = false;
         if (Current == Kind.Clear) Toast("A calm night... for now.", 2.5f);
+    }
+
+    // after the story intro: no spinning card (the intro showed the weather), just start it after the fly-over
+    IEnumerator QuietStart()
+    {
+        while (FarmFlyover.Active) yield return null;
+        StartEffects();
+        Showing = false;
+        Toast("Tonight... " + Names[(int)Current], 2.5f);
     }
 
     public void Toast(string msg, float seconds)

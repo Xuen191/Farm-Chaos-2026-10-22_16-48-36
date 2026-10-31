@@ -18,6 +18,8 @@ public class BeanWobble : MonoBehaviour
     public float maxAngle = 30f;
 
     Transform head, spine, armL, armR;
+    Animator anim;
+    Quaternion restHead, restSpine, restArmL, restArmR;
     Vector3 lastPos, lastVel, acc;
     bool primed;
     Vector2 headS, headV, armS, armV, bodyS, bodyV;   // x = forward nod, y = side roll
@@ -26,12 +28,21 @@ public class BeanWobble : MonoBehaviour
     {
         var all = GetComponentsInChildren<Transform>(true);
         head = Find(all, "head"); spine = Find(all, "spine"); armL = Find(all, "arm.L"); armR = Find(all, "arm.R");
+        anim = GetComponentInChildren<Animator>();
+        restHead = Rest(head); restSpine = Rest(spine); restArmL = Rest(armL); restArmR = Rest(armR);
     }
 
     static Transform Find(Transform[] all, string n) { foreach (var t in all) if (t.name == n) return t; return null; }
+    static Quaternion Rest(Transform t) => t != null ? t.localRotation : Quaternion.identity;
+    static void Reset(Transform t, Quaternion q) { if (t != null) t.localRotation = q; }
 
     void LateUpdate()   // runs after the Animator, so we add on top of this frame's pose
     {
+        // the wobble is added on top of the Animator's pose each frame. If nothing is animating the bones
+        // (no animations hooked up), put them back first - otherwise the tilts pile up and the head spins round
+        if (anim == null || !anim.isActiveAndEnabled || anim.runtimeAnimatorController == null)
+        { Reset(head, restHead); Reset(spine, restSpine); Reset(armL, restArmL); Reset(armR, restArmR); }
+
         float dt = Mathf.Clamp(Time.deltaTime, 0.0001f, 0.05f);
         Vector3 vel = (transform.position - lastPos) / dt;
         lastPos = transform.position;

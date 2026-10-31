@@ -259,6 +259,9 @@ public class LobbyUI : MonoBehaviour
         if (countdown != null) countdown.text = "";
     }
 
+    /// <summary>Testing (F9 in the editor): play the story intro solo and go to the farm, no circle needed.</summary>
+    public void TestStart() { if (!starting && (Net == null || !Net.InSession)) StartCoroutine(StartRoutine()); }
+
     // offline / solo
     IEnumerator StartRoutine()
     {

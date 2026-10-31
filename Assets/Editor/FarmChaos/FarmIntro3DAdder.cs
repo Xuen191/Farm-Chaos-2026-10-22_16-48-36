@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 // Farm Chaos - adds the 3D story intro to the Lobby (plays after START instead of the 2D slides).
-// Menu: Tools > Farm Chaos > 15. Add 3D Story Intro
+// Menu: Tools > Farm Chaos > 15. Add 3D Story Intro  (run again after step 22 so it picks up your bean + the animals)
 using System.IO;
 using System.Linq;
 using UnityEditor;
@@ -32,6 +32,13 @@ public static class FarmIntro3DAdder
         cut.tree = Prefab("Env_Tree_01");
         cut.bush = Prefab("Env_Bush_01");
         cut.rounded = FarmLobbyPolish.RoundedSprite();
+        cut.beanPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Chibi_Player.prefab");
+        cut.beanAnimations = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Models/Chibi/Chibi.controller");
+        cut.chickenPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Animals/Chicken.prefab");
+        cut.sheepPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Animals/Sheep.prefab");
+        cut.cowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Animals/Cow.prefab");
+        cut.bunnyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Animals/Bunny.prefab");
+        if (cut.beanPrefab == null) Debug.LogWarning("[Farm Chaos] Chibi_Player.prefab not found - run step 22 (Build Chibi Player) first, then this step again.");
         cut.enabled = true;
         EditorUtility.SetDirty(cut);
         EditorSceneManager.MarkSceneDirty(scene);

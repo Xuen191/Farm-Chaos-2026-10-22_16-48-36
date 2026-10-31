@@ -1,17 +1,3 @@
-// Farm Chaos - "Tonight's Weather": a random weather roll at the start of every round.
-//
-//   Clear Night   calm, nothing changes
-//   Heavy Rain    rain + slippery mud (you slide when you turn or stop)
-//   Thick Fog     you can only see a little way around you (lifts at dawn)
-//   Thunderstorm  rain + mud + lightning flashes that light up the farm, with a little rumble
-//   Windy         gusts that push everyone around
-//   Earthquake    every minute or so the ground shakes and knocks you about
-//
-// A slot-machine card spins at the start of the round, lands on tonight's weather, then shrinks into a
-// little badge in the corner. Online, the host's game picks the weather and tells everyone, and lightning
-// and quakes happen at the same moments for every player (timed from the shared round clock).
-//
-// Testing: tick "Force Weather" on the Tonights_Weather object and pick one.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -24,10 +10,8 @@ public class TonightsWeather : MonoBehaviour
     public enum Kind { Clear, Rain, Fog, Thunderstorm, Windy, Earthquake }
 
     public static TonightsWeather Instance { get; private set; }
-    /// <summary>Tonight's weather (valid once Decided has fired).</summary>
     public static Kind Current { get; private set; }
     public static bool HasRolled { get; private set; }
-    /// <summary>True while the roll card is on screen (other popups can wait for it).</summary>
     public static bool Showing { get; private set; }
     public static event Action<Kind> Decided;
 
@@ -62,15 +46,14 @@ public class TonightsWeather : MonoBehaviour
     public Kind forced = Kind.Rain;
 
     [Header("Strength")]
-    [Range(0.1f, 1f)] public float mudGrip = 0.4f;            // rain: how much grip is left (1 = normal)
+    [Range(0.1f, 1f)] public float mudGrip = 0.4f;            
     public float fogDensity = 0.06f;
     public Color fogNight = new Color(0.20f, 0.22f, 0.32f);
     public Color fogDawn = new Color(0.86f, 0.70f, 0.68f);
-    public float windStrength = 3.4f;                           // wind speed (m/s): slows you down walking into it, drifts you when still
+    public float windStrength = 3.4f;                           
     public float quakeStrength = 7f;
-    public Vector2 quakeEvery = new Vector2(45f, 80f);          // seconds between quakes
+    public Vector2 quakeEvery = new Vector2(45f, 80f);          
     public float quakeLength = 4f;
-    [Tooltip("How long you can't move after an earthquake knocks you over")]
     public float knockedDownFor = 1.8f;
     public Vector2 lightningEvery = new Vector2(10f, 22f);
 
@@ -82,7 +65,6 @@ public class TonightsWeather : MonoBehaviour
     public AudioClip windLoop;
     public AudioClip quakeRumble;
 
-    // ---------------------------------------------------------------- state
     static int pendingKind = -1, pendingSeed;
     int seed;
     bool running;
@@ -101,7 +83,27 @@ public class TonightsWeather : MonoBehaviour
     float toastUntil;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { Instance = null; HasRolled = false; Showing = false; pendingKind = -1; Decided = null; }
+    static void ResetStatics() { Instance = null; HasRolled = false; Showing = false; pendingKind = -1; Decided = null; PresetKind = -1; FromIntro = false; }
+
+    // ---------------------------------------------------------------- picked in the lobby (the story intro shows it)
+    /// <summary>Tonight's weather, already rolled in the lobby so the story intro can show it. -1 = not yet.</summary>
+    public static int PresetKind { get; private set; } = -1;
+    static int presetSeed;
+    public static bool HasPreset => PresetKind >= 0;
+    /// <summary>Set by the story intro: the farm then skips the spinning card (you've seen the weather already).</summary>
+    public static bool FromIntro;
+    public static void Preset(int kind, int seed) { PresetKind = kind; presetSeed = seed; }
+
+    /// <summary>Roll the weather before the farm exists (lobby). Same odds as the default Tonights_Weather settings.</summary>
+    public static (int kind, int seed) RollForIntro()
+    {
+        int s = UnityEngine.Random.Range(1, int.MaxValue);
+        int[] odds = { 25, 20, 18, 12, 15, 10 };   // clear, rain, fog, thunder, windy, quake
+        int total = 0; foreach (var o in odds) total += o;
+        int r = UnityEngine.Random.Range(0, total);
+        for (int i = 0; i < odds.Length; i++) { r -= odds[i]; if (r < 0) return (i, s); }
+        return (0, s);
+    }
 
     void Awake() { Instance = this; HasRolled = false; Showing = false; }
 
@@ -123,18 +125,17 @@ public class TonightsWeather : MonoBehaviour
 
     IEnumerator WaitForHost()
     {
-        // the host's pick normally arrives within a second; don't wait forever if something went wrong
         for (float t = 0; t < 10f && !HasRolled; t += Time.unscaledDeltaTime) yield return null;
         if (!HasRolled) { var p = Pick(); Apply((Kind)p.kind, p.seed); }
     }
 
-    /// <summary>Roll the dice (host / offline). Uses "Force Weather" if ticked on the farm's weather object.</summary>
     public static (int kind, int seed) Pick()
     {
         int s = UnityEngine.Random.Range(1, int.MaxValue);
         var w = Instance != null ? Instance : FindAnyObjectByType<TonightsWeather>();
+        if (w != null && w.forceWeather) return ((int)w.forced, s);
+        if (HasPreset) { var p = (PresetKind, presetSeed); PresetKind = -1; return p; }   // rolled in the lobby for the intro
         if (w == null) return (0, s);
-        if (w.forceWeather) return ((int)w.forced, s);
         int[] odds = { w.clearChance, w.rainChance, w.fogChance, w.thunderChance, w.windChance, w.quakeChance };
         int total = 0; foreach (var o in odds) total += Mathf.Max(0, o);
         int r = UnityEngine.Random.Range(0, Mathf.Max(1, total));
@@ -142,7 +143,6 @@ public class TonightsWeather : MonoBehaviour
         return (0, s);
     }
 
-    /// <summary>Online: the host's pick arrived.</summary>
     public static void Receive(int kind, int seed)
     {
         if (Instance != null) Instance.Apply((Kind)kind, seed);
@@ -153,13 +153,14 @@ public class TonightsWeather : MonoBehaviour
     {
         if (HasRolled) return;
         HasRolled = true; Current = kind; seed = s;
+        PresetKind = -1;
         Showing = true;
         Decided?.Invoke(kind);
         StopAllCoroutines();
-        StartCoroutine(RollCard());
+        FromIntro = false;
+        StartCoroutine(RollWhenReady());   // the spinning weather card (after the map fly-over, if there is one)
     }
 
-    // ================================================================ effects
     void StartEffects()
     {
         if (running) return;
@@ -169,12 +170,11 @@ public class TonightsWeather : MonoBehaviour
         float Rand(Vector2 r) => r.x + (float)rng.NextDouble() * (r.y - r.x);
         float a = (float)rng.NextDouble() * 360f; windDir = new Vector3(Mathf.Cos(a * Mathf.Deg2Rad), 0f, Mathf.Sin(a * Mathf.Deg2Rad));
 
-        // event times on the shared round clock (same for everyone)
         float len = RoundClock.Instance != null ? RoundClock.Instance.roundLengthSeconds : 600f;
         if (Current == Kind.Thunderstorm) for (float t = Rand(new Vector2(6f, 12f)); t < len; t += Rand(lightningEvery)) events.Add(t);
         if (Current == Kind.Earthquake) for (float t = Rand(new Vector2(14f, 22f)); t < len; t += Rand(quakeEvery)) events.Add(t);
         nextEvent = 0;
-        while (nextEvent < events.Count && events[nextEvent] < Now() - 1f) nextEvent++;   // joined late / long roll
+        while (nextEvent < events.Count && events[nextEvent] < Now() - 1f) nextEvent++;   
 
         loop = gameObject.AddComponent<AudioSource>(); loop.loop = true; loop.spatialBlend = 0f; loop.volume = 0.5f;
         sfx = gameObject.AddComponent<AudioSource>(); sfx.spatialBlend = 0f;
@@ -208,7 +208,6 @@ public class TonightsWeather : MonoBehaviour
         if (cam == null) cam = Camera.main;
         float now = Now();
 
-        // timed events (lightning / quakes)
         while (nextEvent < events.Count && now >= events[nextEvent])
         {
             nextEvent++;
@@ -219,9 +218,9 @@ public class TonightsWeather : MonoBehaviour
         switch (Current)
         {
             case Kind.Fog:
-                float lift = 1f - 0.85f * DawnLighting.Amount;                 // the fog burns off at sunrise
+                float lift = 1f - 0.85f * DawnLighting.Amount;                 
                 RenderSettings.fogDensity = fogDensity * lift;
-                RenderSettings.fogColor = Color.Lerp(fogNight, fogDawn, DawnLighting.Amount);   // misty blue, pink at sunrise
+                RenderSettings.fogColor = Color.Lerp(fogNight, fogDawn, DawnLighting.Amount);   
                 break;
             case Kind.Windy:
                 float gust = 0.55f + 0.75f * Mathf.PerlinNoise(Time.time * 0.25f, seed % 1000 * 0.01f);
@@ -234,20 +233,18 @@ public class TonightsWeather : MonoBehaviour
                 break;
         }
 
-        // quake shaking
         if (quakeUntil > 0f)
         {
             float left = quakeUntil - Time.time;
             if (left <= 0f) { quakeUntil = -1f; CameraFollow.Shake = Vector3.zero; }
             else
             {
-                float k = Mathf.Clamp01(left / quakeLength) * Mathf.Clamp01((quakeLength - left) * 3f);   // ease in & out
+                float k = Mathf.Clamp01(left / quakeLength) * Mathf.Clamp01((quakeLength - left) * 3f);   
                 float t = Time.time * 28f;
                 CameraFollow.Shake = new Vector3(Mathf.PerlinNoise(t, 0f) - 0.5f, Mathf.PerlinNoise(0f, t) - 0.5f, Mathf.PerlinNoise(t, t) - 0.5f) * 0.6f * k;
             }
         }
 
-        // lightning flash
         if (flashT >= 0f)
         {
             flashT += Time.deltaTime;
@@ -258,7 +255,6 @@ public class TonightsWeather : MonoBehaviour
             if (flashT > 1.2f) { flashT = -1f; CameraFollow.Shake = Vector3.zero; }
         }
 
-        // rain/wind follow the camera
         if (cam != null)
         {
             Vector3 c = cam.transform.position;
@@ -270,7 +266,6 @@ public class TonightsWeather : MonoBehaviour
 
     static Vector3 Flat(Vector3 v) { v.y = 0f; return v.sqrMagnitude > 0.0001f ? v.normalized : Vector3.forward; }
 
-    // double flicker: bright, dip, bright, fade
     static float Flash(float t)
     {
         if (t < 0.06f) return t / 0.06f;
@@ -283,7 +278,7 @@ public class TonightsWeather : MonoBehaviour
     {
         flashT = 0f;
         Debug.Log("[Farm Chaos] Weather: lightning!");
-        PowerGrid.LightningStrike();          // sometimes it knocks the power out (host decides)
+        PowerGrid.LightningStrike();          
         if (thunderSound != null) StartCoroutine(PlayLater(thunderSound, 0.4f + UnityEngine.Random.value * 0.8f));
     }
 
@@ -293,15 +288,12 @@ public class TonightsWeather : MonoBehaviour
         Debug.Log("[Farm Chaos] Weather: EARTHQUAKE!");
         Toast("EARTHQUAKE!", 2.5f);
         if (quakeRumble != null) sfx.PlayOneShot(quakeRumble);
-        // loose things on the farm get a bump (each player's game bumps its own copy)
         foreach (var rb in FindObjectsByType<Rigidbody>(FindObjectsSortMode.None))
         {
             if (rb.isKinematic || rb.GetComponent<SpherePlayer>() != null) continue;
             if (rb.mass > 30f) continue;
             rb.AddForce(new Vector3(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(1.5f, 3f), UnityEngine.Random.Range(-1f, 1f)), ForceMode.VelocityChange);
         }
-        // everyone standing on the ground falls over (every game does this for every player at the same moment,
-        // so online everyone sees the same thing). In the air when it hits = dodged!
         foreach (var m in FindObjectsByType<ChibiMotor>(FindObjectsSortMode.None)) m.Knock();
         var me = FindAnyObjectByType<SpherePlayer>();
         if (me != null && me.IsGrounded) me.Stun(knockedDownFor);
@@ -309,7 +301,6 @@ public class TonightsWeather : MonoBehaviour
 
     IEnumerator PlayLater(AudioClip c, float delay) { yield return new WaitForSeconds(delay); if (sfx != null) sfx.PlayOneShot(c, 0.9f); }
 
-    // ---------------------------------------------------------------- particles
     ParticleSystem MakeRain(int rate)
     {
         var go = new GameObject("Weather_Rain");
@@ -322,8 +313,8 @@ public class TonightsWeather : MonoBehaviour
         m.startColor = new Color(0.78f, 0.86f, 1f, 0.55f);
         m.simulationSpace = ParticleSystemSimulationSpace.World;
         var e = ps.emission; e.rateOverTime = rate;
-        var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = new Vector3(30f, 30f, 0.1f);   // flat sheet above the camera
-        go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);   // emit downwards
+        var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = new Vector3(30f, 30f, 0.1f);   
+        go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);   
         var r = go.GetComponent<ParticleSystemRenderer>();
         r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = 0.06f; r.lengthScale = 1f;
         r.sharedMaterial = LoadMat("Mat_Rain");
@@ -359,7 +350,6 @@ public class TonightsWeather : MonoBehaviour
     {
         var m = Resources.Load<Material>("Weather/" + name);
         if (m != null) return m;
-        // fallback if the setup step hasn't been run
         var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default");
         return new Material(sh);
     }
@@ -379,7 +369,6 @@ public class TonightsWeather : MonoBehaviour
         o.transform.SetAsFirstSibling();
     }
 
-    // ================================================================ UI
     void EnsureUI()
     {
         if (ui != null) return;
@@ -402,7 +391,7 @@ public class TonightsWeather : MonoBehaviour
         var root = (RectTransform)rootGo.transform; Stretch(root);
         var group = rootGo.GetComponent<CanvasGroup>(); group.alpha = 0f;
 
-        var dim = Img(root, null, new Color(0.08f, 0.07f, 0.16f, 0.6f)); Stretch(dim.rectTransform); dim.raycastTarget = true;   // tap to skip
+        var dim = Img(root, null, new Color(0.08f, 0.07f, 0.16f, 0.6f)); Stretch(dim.rectTransform); dim.raycastTarget = true;   
         bool skip = false;
         var btn = dim.gameObject.AddComponent<Button>(); btn.transition = Selectable.Transition.None; btn.onClick.AddListener(() => skip = true);
 
@@ -419,7 +408,6 @@ public class TonightsWeather : MonoBehaviour
         for (float a = 0; a < 1f; a += Time.unscaledDeltaTime * 4f) { group.alpha = a; yield return null; }
         group.alpha = 1f;
 
-        // spin: fast at first, slowing down, ending on tonight's weather
         int steps = 14 + UnityEngine.Random.Range(0, 3);
         int start = (final - steps % Names.Length + Names.Length * 4) % Names.Length;
         for (int i = 0; i <= steps && !skip; i++)
@@ -430,7 +418,7 @@ public class TonightsWeather : MonoBehaviour
             float wait = Mathf.Lerp(0.05f, 0.34f, Mathf.Pow(i / (float)steps, 2.2f));
             for (float t = 0; t < wait && !skip; t += Time.unscaledDeltaTime)
             {
-                icon.rectTransform.anchoredPosition = new Vector2(0, 50 + 18f * (1f - t / wait));   // little drop-in
+                icon.rectTransform.anchoredPosition = new Vector2(0, 50 + 18f * (1f - t / wait));   
                 yield return null;
             }
         }
@@ -439,7 +427,6 @@ public class TonightsWeather : MonoBehaviour
         if (rollLand != null && sfx != null) sfx.PlayOneShot(rollLand);
         StartEffects();
 
-        // land: punch + description
         blurb.text = Blurbs[final];
         for (float t = 0; t < 0.35f; t += Time.unscaledDeltaTime)
         {
@@ -452,7 +439,6 @@ public class TonightsWeather : MonoBehaviour
         skip = false;
         for (float t = 0; t < 2.4f && !skip; t += Time.unscaledDeltaTime) yield return null;
 
-        // fade away (no badge - the weather speaks for itself)
         for (float t = 0; t < 1f; t += Time.unscaledDeltaTime * 3f)
         {
             group.alpha = 1f - t;
@@ -462,6 +448,22 @@ public class TonightsWeather : MonoBehaviour
         Destroy(rootGo);
         Showing = false;
         if (Current == Kind.Clear) Toast("A calm night... for now.", 2.5f);
+    }
+
+    IEnumerator RollWhenReady()
+    {
+        while (FarmFlyover.Active) yield return null;
+        if (rollTick != null) AudioSource.PlayClipAtPoint(rollTick, transform.position, 1.0f);
+        yield return RollCard();
+    }
+
+    // after the story intro: no spinning card (the intro showed the weather), just start it after the fly-over
+    IEnumerator QuietStart()
+    {
+        while (FarmFlyover.Active) yield return null;
+        StartEffects();
+        Showing = false;
+        Toast("Tonight... " + Names[(int)Current], 2.5f);
     }
 
     public void Toast(string msg, float seconds)

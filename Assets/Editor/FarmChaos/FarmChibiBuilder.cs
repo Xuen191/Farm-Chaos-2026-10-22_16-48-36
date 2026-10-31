@@ -121,7 +121,7 @@ public static class FarmChibiBuilder
         {
             string n = c.name.Contains("|") ? c.name.Substring(c.name.LastIndexOf('|') + 1) : c.name;
             c.name = n;
-            c.loopTime = n != "Jump" && n != "Fall";
+            c.loopTime = n != "Jump" && n != "Fall" && n != "WakeUp" && n != "Dive";
             c.loopPose = false;
         }
         mi.clipAnimations = clips;
@@ -134,8 +134,18 @@ public static class FarmChibiBuilder
 
     static AnimatorController Controller()
     {
-        AssetDatabase.DeleteAsset(ControllerPath);
-        var ac = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+        // rebuild IN PLACE (don't delete the file): prefabs + scenes that point at it keep their link
+        var ac = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+        if (ac == null) ac = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+        else
+        {
+            while (ac.parameters.Length > 0) ac.RemoveParameter(0);
+            var old = ac.layers[0].stateMachine;
+            foreach (var t in old.anyStateTransitions) old.RemoveAnyStateTransition(t);
+            foreach (var st in old.states) old.RemoveState(st.state);
+            foreach (var sub in AssetDatabase.LoadAllAssetsAtPath(ControllerPath))
+                if (sub is BlendTree) Object.DestroyImmediate(sub, true);        // old Locomotion blend trees
+        }
         ac.AddParameter("Speed", AnimatorControllerParameterType.Float);
         ac.AddParameter(new AnimatorControllerParameter { name = "Grounded", type = AnimatorControllerParameterType.Bool, defaultBool = true });
         ac.AddParameter("Wave", AnimatorControllerParameterType.Trigger);
@@ -171,6 +181,12 @@ public static class FarmChibiBuilder
             var toFall = sm.AddAnyStateTransition(fall);
             toFall.AddCondition(AnimatorConditionMode.If, 0, "Fall"); toFall.hasExitTime = false; toFall.duration = 0.05f; toFall.canTransitionToSelf = false;
             var up = fall.AddTransition(loco); up.hasExitTime = true; up.exitTime = 0.97f; up.duration = 0.1f;
+        }
+        // story-intro acting moves: no transitions, the intro plays them by name (Animator.CrossFade)
+        foreach (var n in new[] { "Sleep", "SleepSprawl", "WakeUp", "HotFan", "Panic", "Dive", "Pose" })
+        {
+            var clip = Clip(n);
+            if (clip != null) sm.AddState(n).motion = clip;
         }
         EditorUtility.SetDirty(ac);
         AssetDatabase.SaveAssets();

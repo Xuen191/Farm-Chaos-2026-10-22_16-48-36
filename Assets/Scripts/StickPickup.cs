@@ -8,6 +8,9 @@ public class StickPickup : Interactable
     private Collider[] colliders;
     private GameObject playerObj;
 
+    [Header("Audio")]
+    public AudioClip pickupSound;
+
     void Start()
     {
         hintMessage = "Pick up Stick"; 
@@ -28,9 +31,8 @@ public class StickPickup : Interactable
 
         if (playerObj != null)
         {
-            // 生成木棍模型
             GameObject newModel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            newModel.name = "MyHandheldStickModel";
+            newModel.name = "MyHandheldStickModel"; 
             newModel.transform.SetParent(playerObj.transform);
             newModel.transform.localPosition = new Vector3(0, 0.5f, 0); 
             newModel.transform.localRotation = Quaternion.Euler(90, 0, 0); 
@@ -41,23 +43,44 @@ public class StickPickup : Interactable
             if (modelRenderer != null)
             {
                 Material unlitMat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-                unlitMat.SetColor("_BaseColor", new Color(0.4f, 0.2f, 0.1f)); // 木頭色
+                unlitMat.SetColor("_BaseColor", new Color(0.4f, 0.2f, 0.1f)); 
                 modelRenderer.material = unlitMat;
             }
 
-            // 啟動攻擊能力
             StickAttack attack = playerObj.GetComponent<StickAttack>();
             if (attack != null) 
             {
                 attack.PickUpStick(); 
             }
-
         }
 
         isPickedUp = true;
         SetVisuals(false);
         StartCoroutine(RespawnRoutine());
+
+        if (pickupSound != null) 
+{
+    AudioSource.PlayClipAtPoint(pickupSound, transform.position);
+}
     }
+
+        public void DropStick(GameObject player)
+    {
+        if (player != null)
+        {
+            // 1. 刪除手上的木棍模型
+            Transform stickModel = player.transform.Find("MyHandheldStickModel");
+            if (stickModel != null) Destroy(stickModel.gameObject);
+
+            // 2. 關閉攻擊能力
+            StickAttack attack = player.GetComponent<StickAttack>();
+            if (attack != null) 
+            {
+                attack.hasStick = false; // 關閉攻擊狀態
+            }
+        }
+    }
+
 
     private IEnumerator RespawnRoutine()
     {

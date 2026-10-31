@@ -48,6 +48,7 @@ public class NetPlayer : NetworkBehaviour
     readonly NetworkVariable<Unity.Collections.FixedString512Bytes> lookJson =
         new NetworkVariable<Unity.Collections.FixedString512Bytes>(default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public bool HasLook => lookJson.Value.Length > 0;
+    public string LookJson => lookJson.Value.ToString();
     string placedInScene = "";
 
     public override void OnNetworkSpawn()
@@ -179,12 +180,40 @@ public class NetPlayer : NetworkBehaviour
 
     // ------------------------------------------------------------ START (lobby)
     /// <summary>Host only: everyone plays the story intro, then the host loads the farm for the whole party.</summary>
-    public void BeginGame() { if (IsServer) StartGameRpc(); }
+    public void BeginGame()
+    {
+        if (!IsServer) return;
+        var (weather, weatherSeed) = TonightsWeather.RollForIntro();   // tonight's weather is picked now, so the intro can show it
+        StartGameRpc(weather, weatherSeed);
+    }
 
     [Rpc(SendTo.Everyone)]
-    void StartGameRpc()
+    void StartGameRpc(int weather, int weatherSeed)
     {
+        TonightsWeather.Preset(weather, weatherSeed);
         if (LobbyUI.Instance != null) LobbyUI.Instance.PlayOnlineIntro(NetworkManager.Singleton.IsServer);
+    }
+
+    // ------------------------------------------------------------ end of the night (Sunrise screen)
+    /// <summary>How many friends pressed PLAY AGAIN (shown on the host's Sunrise screen).</summary>
+    public static int AgainVotes { get; private set; }
+    static readonly System.Collections.Generic.HashSet<ulong> againVoters = new System.Collections.Generic.HashSet<ulong>();
+
+    /// <summary>Friend: "I want to play again".</summary>
+    public void VotePlayAgain() { if (IsOwner) VoteAgainRpc(); }
+
+    [Rpc(SendTo.Server)]
+    void VoteAgainRpc() { againVoters.Add(OwnerClientId); AgainCountRpc(againVoters.Count); }
+
+    [Rpc(SendTo.Everyone)]
+    void AgainCountRpc(int votes) { AgainVotes = votes; }
+
+    /// <summary>Host: take the whole party to a scene (a new night on the farm, or back to the lobby).</summary>
+    public void HostLoadForEveryone(string scene)
+    {
+        if (!IsServer) return;
+        againVoters.Clear(); AgainCountRpc(0);
+        NetworkManager.SceneManager.LoadScene(scene, LoadSceneMode.Single);
     }
 
     // ------------------------------------------------------------ power

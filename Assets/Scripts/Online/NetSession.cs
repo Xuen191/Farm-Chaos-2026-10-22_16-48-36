@@ -11,6 +11,7 @@ using Unity.Services.Core;
 using Unity.Services.Multiplayer;
 using UnityEngine;
 
+[DefaultExecutionOrder(-10000)]   // before the NetworkManager on the same object (see Awake)
 public class NetSession : MonoBehaviour
 {
     public static NetSession Instance { get; private set; }
@@ -30,7 +31,9 @@ public class NetSession : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        // coming back to the Lobby while still in a party: this scene's Network object is a spare copy.
+        // Switch it off BEFORE its NetworkManager wakes up (destroying a live one would shut the party down).
+        if (Instance != null && Instance != this) { gameObject.SetActive(false); Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }

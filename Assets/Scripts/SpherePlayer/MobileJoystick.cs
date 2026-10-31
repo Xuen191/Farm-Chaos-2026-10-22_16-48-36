@@ -52,6 +52,16 @@ public class MobileJoystick : MonoBehaviour
 
     void OnDisable() { Value = Vector2.zero; LookDelta = Vector2.zero; }
 
+    // clicked into another window / alt-tabbed: let go of everything, so the ball doesn't keep rolling
+    void OnApplicationFocus(bool focused) { if (!focused) ReleaseAll(); }
+    void OnApplicationPause(bool paused) { if (paused) ReleaseAll(); }
+    void ReleaseAll()
+    {
+        if (moveFinger != -1 || mouseMoving) End();
+        moveFinger = lookFinger = -1; mouseMoving = mouseLooking = false;
+        Value = Vector2.zero; LookDelta = Vector2.zero;
+    }
+
     bool OnJumpButton(Vector2 screenPos)
     {
         if (jumpButton == null || !jumpButton.gameObject.activeInHierarchy) return false;
@@ -82,6 +92,11 @@ public class MobileJoystick : MonoBehaviour
         if (Input.touchCount > 0)
         {
             mouseMoving = mouseLooking = false;
+            // a finger we were tracking has vanished without an "ended" (it happens): let go of it
+            bool moveAlive = false, lookAlive = false;
+            for (int i = 0; i < Input.touchCount; i++) { var f = Input.GetTouch(i).fingerId; moveAlive |= f == moveFinger; lookAlive |= f == lookFinger; }
+            if (moveFinger != -1 && !moveAlive) { moveFinger = -1; End(); }
+            if (lookFinger != -1 && !lookAlive) lookFinger = -1;
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
@@ -112,6 +127,9 @@ public class MobileJoystick : MonoBehaviour
         {
             if (moveFinger != -1) { moveFinger = -1; End(); }
             lookFinger = -1;
+            // the button is already up but we missed the "let go" (released outside the window, focus change...)
+            if (mouseMoving && !Input.GetMouseButton(0)) { mouseMoving = false; End(); }
+            if (mouseLooking && !Input.GetMouseButton(0)) mouseLooking = false;
 
             // left mouse = a fake finger (editor / Device Simulator)
             Vector2 mp = Input.mousePosition;

@@ -12,6 +12,7 @@ Material:
   m_Parent: {fileID: 2100000, guid: 1b477d70e90162d40b2dc1ea6919b06b, type: 2}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _RECEIVE_SHADOWS_OFF
   - _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
   m_InvalidKeywords: []
   m_LightmapFlags: 4
@@ -27,10 +28,11 @@ Material:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _ReceiveShadows: 0
     m_Colors:
     - _BaseColor: {r: 0.2752197, g: 0.735849, b: 0.22908506, a: 1}
-    - _Color: {r: 0.27521968, g: 0.735849, b: 0.22908503, a: 1}
+    - _Color: {r: 0.2752197, g: 0.735849, b: 0.22908506, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &15816266097071469

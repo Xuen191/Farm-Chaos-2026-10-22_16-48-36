@@ -23,6 +23,8 @@
 #     holding items later.
 #   * ANIMATIONS: Idle / Walk / Run / Jump / Wave / Cheer with floppy follow-through (head and arms lag
 #     behind the body), plus a Carry pose for holding things with both arms.
+#   * STORY INTRO acting: Sleep / SleepSprawl (lying on the floor), WakeUp (pops up), HotFan (fanning,
+#     sweaty), Panic (arms flailing), Dive (out of the window) and Pose (hero pose for the player cards).
 #   * HATS: Bucket (new) + the five game hats (Straw, Cap, Chicken, FlowerCrown, Beret) refitted to the bean.
 # =====================================================================================================
 import bpy, bmesh, math, os
@@ -33,8 +35,9 @@ HERO_HAIR = "Bob"      # Bob, Long, Pigtails, Spiky, or "None"
 HERO_HAT = "Bucket"    # Bucket, Straw, Cap, Chicken, FlowerCrown, Beret, or "None"
 VIEW = "ALL"           # "3Q", "FRONT" (symmetry check), "SIDE", "BACK" or "ALL"
 DO_RENDER = True
-DO_FACE_SHEET = True   # also render a close-up of every expression (Art/renders/bean_face_*.png)
+DO_FACE_SHEET = False  # also render a close-up of every expression (Art/renders/bean_face_*.png)
 DO_EXPORT = True       # write the Unity model
+DO_ACT_SHEET = True    # render a few frames of each story-intro acting animation (Art/renders/bean_act_*.png)
 CLEAR_WHOLE_SCENE = globals().get("CLEAR_WHOLE_SCENE", False)   # True = delete EVERYTHING first
 
 PROJECT = r"C:\Users\shere\Farm-Chaos-2026-10-22_16-48-36"
@@ -45,6 +48,9 @@ FBX_PATH = os.path.join(PROJECT, "Assets", "Models", "Chibi", "Chibi.fbx")
 FACES = ["Smile", "Happy", "Surprised", "Angry", "Sad", "Sleepy", "Wink", "Determined", "Love"]
 HAT_NAMES = ["Bucket", "Straw", "Cap", "Chicken", "FlowerCrown", "Beret"]
 HAIR_NAMES = ["Bob", "Long", "Pigtails", "Spiky"]
+# game moves + the story-intro "acting" moves (Sleep ... Pose)
+ACTION_NAMES = ["Idle", "Walk", "Run", "Jump", "Wave", "Cheer", "Carry", "Fall",
+                "Sleep", "SleepSprawl", "WakeUp", "HotFan", "Panic", "Dive", "Pose"]
 
 # ----------------------------------------------------------------------------------- 0. clean up
 if bpy.context.object and bpy.context.object.mode != 'OBJECT':
@@ -68,7 +74,7 @@ for coll in (bpy.data.meshes, bpy.data.materials, bpy.data.lights, bpy.data.came
     for d in list(coll):
         if d.users == 0 or d.name.startswith("Bean_"): coll.remove(d)
 for a in list(bpy.data.actions):
-    if a.name in ("Idle", "Walk", "Run", "Jump", "Wave", "Cheer", "Carry", "Fall") or a.name.startswith("Bean_"): bpy.data.actions.remove(a)
+    if a.name in ACTION_NAMES or a.name.startswith("Bean_"): bpy.data.actions.remove(a)
 
 scene = bpy.context.scene
 scene.render.fps = 30
@@ -765,11 +771,85 @@ def carry(t):  # both arms forward to hold something in front (for later)
     return {"hips": (0, 0, 0, 0, 0.005 * SN(t), 0), "spine": (-3, 0, 0, 0, 0, 0), "head": (2 * SN(t, 1, 0.2), 0, 3 * SN(t, 1, 0.15), 0, 0, 0),
             "arm.L": (75, 0, -22, 0, 0, 0), "arm.R": (75, 0, 22, 0, 0, 0)}
 
+
+# ---- story-intro acting (lying poses rest on the floor, like the Fall clip's lying part)
+LIE = 0.17
+def sleep(t):  # fast asleep on its back: slow breathing, head lolled, arms flopped out
+    return {"hips": (-86, 0, 2 * SN(t), 0, LIE + 0.004 * SN(t), 0), "spine": (-6 + 3 * SN(t), 0, 0, 0, 0, 0),
+            "head": (10, 0, 18 + 3 * SN(t, 1, 0.2), 0, 0, 0),
+            "arm.L": (10, 0, 55 + 4 * SN(t, 1, 0.1), 0, 0, 0), "arm.R": (10, 0, -55 - 4 * SN(t, 1, 0.1), 0, 0, 0),
+            "hand.L": (0, 0, 15, 0, 0, 0), "hand.R": (0, 0, -15, 0, 0, 0),
+            "leg.L": (0, 0, 8, 0, 0, 0), "leg.R": (0, 0, -8, 0, 0, 0)}
+
+def sleep_sprawl(t):  # messy sleeper: arm flung over its head, one knee up, a little kick now and then
+    kick = max(0.0, math.sin(2 * math.pi * t * 2)) ** 6
+    return {"hips": (-86, 0, -4 + 2 * SN(t), 0, LIE + 0.004 * SN(t), 0), "spine": (-6 + 3 * SN(t), 0, 0, 0, 0, 0),
+            "head": (12, 0, -22 + 3 * SN(t, 1, 0.3), 0, 0, 0),
+            "arm.R": (0, 0, -165 + 4 * SN(t, 1, 0.2), 0, 0, 0), "hand.R": (0, 0, -20, 0, 0, 0),
+            "arm.L": (25, 0, 35 + 3 * SN(t, 1, 0.1), 0, 0, 0), "hand.L": (10, 0, 0, 0, 0, 0),
+            "leg.L": (40 + 18 * kick, 0, 12, 0, 0, 0), "leg.R": (0, 0, -10, 0, 0, 0)}
+
+def wake_up(t):  # twitch... then BOING! pops up from lying down, arms flung out, wobbles to a stand
+    E = lambda x: x * x * (3 - 2 * x)
+    if t < 0.15:
+        k = t / 0.15
+        return {"hips": (-86, 0, 0, 0, LIE, 0), "spine": (-6, 0, 0, 0, 0, 0), "head": (10, 0, 18 * (1 - k), 0, 0, 0),
+                "arm.L": (10, 0, 55, 0, 0, 0), "arm.R": (10, 0, -55, 0, 0, 0), "leg.L": (8 * math.sin(k * 9), 0, 8, 0, 0, 0), "leg.R": (0, 0, -8, 0, 0, 0)}
+    if t < 0.5:
+        k = E((t - 0.15) / 0.35); up = math.sin(k * math.pi) * 0.07
+        return {"hips": (-86 * (1 - k) + 12 * math.sin(k * math.pi), 0, 0, 0, LIE * (1 - k) + up, 0), "spine": (-6 * (1 - k), 0, 0, 0, 0, 0),
+                "head": (10 * (1 - k) - 14 * math.sin(k * math.pi), 0, 0, 0, 0, 0),
+                "arm.L": (10 * (1 - k), 0, 55 + 75 * k, 0, 0, 0), "arm.R": (10 * (1 - k), 0, -55 - 75 * k, 0, 0, 0),
+                "hand.L": (0, 0, 30 * k, 0, 0, 0), "hand.R": (0, 0, -30 * k, 0, 0, 0),
+                "leg.L": (30 * math.sin(k * math.pi), 0, 8 * (1 - k), 0, 0, 0), "leg.R": (-20 * math.sin(k * math.pi), 0, -8 * (1 - k), 0, 0, 0)}
+    k = E((t - 0.5) / 0.5); w = math.exp(-4 * k) * math.sin(k * 22)
+    return {"hips": (6 * w, 0, 5 * w, 0, 0, 0), "spine": (-4 * w, 0, 0, 0, 0, 0), "head": (-6 * w, 0, 14 * w, 0, 0, 0),
+            "arm.L": (0, 0, 130 * (1 - k) + 6 + 15 * w, 0, 0, 0), "arm.R": (0, 0, -130 * (1 - k) - 6 - 15 * w, 0, 0, 0),
+            "hand.L": (0, 0, 30 * (1 - k) + 20 * w, 0, 0, 0), "hand.R": (0, 0, -30 * (1 - k) - 20 * w, 0, 0, 0)}
+
+def hot_fan(t):  # sooo hot: slouching, panting, fanning its face fast with one floppy hand
+    pant = SN(t, 4)
+    return {"hips": (0, 0, 3 * SN(t), 0, 0.006 * pant, 0), "spine": (10 + 2 * pant, 0, 3 * SN(t, 1, 0.1), 0, 0, 0),
+            "head": (-12 + 3 * pant, 0, 8 * SN(t, 1, 0.2), 0, 0, 0),
+            "arm.R": (60, 0, -60 + 25 * SN(t, 4), 0, 0, 0), "hand.R": (0, 0, -50 * SN(t, 4, 0.2), 0, 0, 0),
+            "arm.L": (8, 0, -2 + 3 * SN(t, 1, 0.2), 0, 0, 0), "hand.L": (12, 0, 0, 0, 0, 0),
+            "leg.L": (0, 0, -4 + 3 * SN(t), 0, 0, 0), "leg.R": (0, 0, 4 - 3 * SN(t), 0, 0, 0)}
+
+def panic(t):  # AAAH! hopping on the spot, arms flapping out to the sides (the head hides arms held up high)
+    b = abs(SN(t, 2))
+    return {"hips": (0, 6 * SN(t, 2), 0, 0, 0.045 * b, 0), "spine": (-6, 0, 4 * SN(t, 2, 0.1), 0, 0, 0),
+            "head": (-10, 0, 12 * SN(t, 2, 0.15), 0, 0, 0),
+            "arm.L": (20 * SN(t, 2), 0, 80 + 30 * SN(t, 2), 0, 0, 0), "arm.R": (-20 * SN(t, 2, 0.25), 0, -80 - 30 * SN(t, 2, 0.25), 0, 0, 0),
+            "hand.L": (0, 0, 35 * SN(t, 2, 0.2), 0, 0, 0), "hand.R": (0, 0, -35 * SN(t, 2, 0.45), 0, 0, 0),
+            "leg.L": (28 * SN(t, 2), 0, 0, 0, 0, 0), "leg.R": (-28 * SN(t, 2), 0, 0, 0, 0, 0)}
+
+def dive(t):  # crouch... then a superman dive (out of the window!), arms out front, legs trailing
+    E = lambda x: x * x * (3 - 2 * x)
+    if t < 0.3:
+        k = E(t / 0.3)
+        return {"hips": (0, 0, 0, 0, -0.04 * k, 0), "spine": (14 * k, 0, 0, 0, 0, 0), "head": (8 * k, 0, 0, 0, 0, 0),
+                "leg.L": (28 * k, 0, 0, 0, 0, 0), "leg.R": (28 * k, 0, 0, 0, 0, 0),
+                "arm.L": (-35 * k, 0, 10 * k, 0, 0, 0), "arm.R": (-35 * k, 0, -10 * k, 0, 0, 0)}
+    k = E(min(1.0, (t - 0.3) / 0.3)); f = SN(t, 3) * min(1.0, (t - 0.3) / 0.3)
+    return {"hips": (75 * k, 0, 0, 0, -0.04 * (1 - k), 0), "spine": (14 * (1 - k), 0, 0, 0, 0, 0), "head": (8 - 50 * k, 0, 4 * f, 0, 0, 0),
+            "arm.L": (-35 + 200 * k, 0, 10 + 4 * f, 0, 0, 0), "arm.R": (-35 + 200 * k, 0, -10 - 4 * f, 0, 0, 0),
+            "hand.L": (0, 0, 15 * f, 0, 0, 0), "hand.R": (0, 0, -15 * f, 0, 0, 0),
+            "leg.L": (28 - 50 * k + 12 * f, 0, 6 * k, 0, 0, 0), "leg.R": (28 - 50 * k - 12 * f, 0, -6 * k, 0, 0, 0)}
+
+def pose(t):  # hero pose for the player cards: fist punched out and up, other hand on hip, feet planted wide
+    return {"hips": (0, 10, 0, 0, 0.01 * SN(t), 0), "spine": (-4, 0, -4, 0, 0, 0), "head": (0, -6, -10 + 2 * SN(t, 1, 0.2), 0, 0, 0),
+            "arm.R": (55, 0, -80 + 5 * SN(t), 0, 0, 0), "hand.R": (0, 0, 0, 0, 0, 0),
+            "arm.L": (-10, 0, 32, 0, 0, 0), "hand.L": (0, 0, -60, 0, 0, 0),
+            "leg.L": (0, 0, 12, 0, 0, 0), "leg.R": (0, 0, -12, 0, 0, 0)}
+
 bpy.context.view_layer.objects.active = rig
 bpy.ops.object.mode_set(mode='POSE')
 for a in [("Idle", 60, idle, 12, True), ("Walk", 26, walk, 12, True), ("Run", 16, run, 12, True), ("Jump", 22, jump, 11, False),
           ("Wave", 30, wave, 10, True), ("Cheer", 24, cheer, 10, True), ("Carry", 40, carry, 8, True),
-          ("Fall", 54, fall, 28, False)]:
+          ("Fall", 54, fall, 28, False),
+          ("Sleep", 90, sleep, 10, True), ("SleepSprawl", 90, sleep_sprawl, 16, True), ("WakeUp", 36, wake_up, 24, False),
+          ("HotFan", 24, hot_fan, 12, True), ("Panic", 16, panic, 12, True), ("Dive", 24, dive, 16, False),
+          ("Pose", 40, pose, 10, True)]:
     make_action(*a)
 pose_frame({})
 bpy.ops.object.mode_set(mode='OBJECT')
@@ -863,6 +943,13 @@ if DO_RENDER:
     shot(os.path.join(RENDER_DIR, "bean_cheer.png"), -20)
     rig.animation_data.action = bpy.data.actions["Fall"]; scene.frame_set(28)
     shot(os.path.join(RENDER_DIR, "bean_fall.png"), -60)
+    if DO_ACT_SHEET:   # story-intro acting: a few frames of each
+        for act, frames, az in (("Sleep", (1,), -60), ("SleepSprawl", (1, 23), -60), ("WakeUp", (1, 12, 18, 36), -40),
+                                ("HotFan", (1, 4), -30), ("Panic", (1, 5), -20), ("Dive", (8, 24), -90), ("Pose", (1,), -20)):
+            rig.animation_data.action = bpy.data.actions[act]
+            for fr in frames:
+                scene.frame_set(fr)
+                shot(os.path.join(RENDER_DIR, f"bean_act_{act.lower()}_{fr}.png"), az, 14, 3.3, (0, 0, 0.45), (420, 460))
     rest_pose(); scene.frame_set(1)
     if DO_FACE_SHEET:
         show_look(EXPRESSION, "None")

@@ -1,6 +1,4 @@
 // Farm Chaos - lets the rolling sphere use your friend's Interactable objects (power box, fuse, shop...).
-// Roll close to something -> its hint shows + a USE button appears. Tap USE (phone) or press E (PC).
-// While a full-screen UI is open (shop, wiring puzzle) the ball and the on-screen controls pause.
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -14,15 +12,12 @@ public class ProximityInteractor : MonoBehaviour
 {
     [Tooltip("How close (in units) the ball must be to use something")]
     public float useRadius = 3f;
-    public TMP_Text hintText;          // your friend's HintText is reused
+    public TMP_Text hintText;          
     public Button useButton;
     public TMP_Text useButtonLabel;
-    [Tooltip("Full-screen panels that pause the player while open (shop, wiring puzzle...)")]
     public GameObject[] modalPanels;
-    [Tooltip("On-screen joystick canvas, hidden while a panel is open")]
     public Canvas mobileControls;
 
-    /// <summary>True while the shop / wiring puzzle (or any modal panel) is open.</summary>
     public static bool UIOpen { get; private set; }
 
     Interactable current;
@@ -71,11 +66,16 @@ public class ProximityInteractor : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E)) ePressed = true;
 #endif
         if (ePressed) Use();
+
+        if (Input.GetMouseButtonDown(1)) 
+        {
+            StickPickup pickup = FindObjectOfType<StickPickup>();
+            if (pickup != null) pickup.DropStick(gameObject);
+        }
     }
 
     void LateUpdate()
     {
-        // this game never locks the mouse (touch controls / mouse-drag camera)
         if (Cursor.lockState != CursorLockMode.None) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
     }
 
@@ -108,7 +108,8 @@ public class ProximityInteractor : MonoBehaviour
     {
         if (UIOpen) return;
 
-        if (current != null && current.gameObject.name.Contains("Dog"))
+        // 💡 判斷是否為敵人：只要身上有 InteractableEnemy 腳本，就當作是敵人！
+        if (current != null && current.GetComponent<InteractableEnemy>() != null)
         {
             StickAttack attack = GetComponent<StickAttack>();
             if (attack != null)

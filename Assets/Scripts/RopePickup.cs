@@ -4,15 +4,17 @@ using System.Collections;
 public class RopePickup : Interactable
 {
     [Header("Settings")]
-    public float respawnTime = 10f; // 繩子多久後重生
+    public float respawnTime = 10f;
     private bool isPickedUp = false;
     
     private MeshRenderer[] meshRenderers;
     private Collider[] colliders;
 
+    [Header("Audio")]
+    public AudioClip pickupSound;
+
     void Start()
     {
-        // 💡 改成簡短的提示文字
         hintMessage = "Pick up Rope"; 
         
         meshRenderers = GetComponentsInChildren<MeshRenderer>();
@@ -23,11 +25,42 @@ public class RopePickup : Interactable
     {
         if (isPickedUp) return;
 
-        Debug.Log("🪢 撿起了繩子！");
+        if (Inventory.Instance != null)
+        {
+            bool alreadyHasRope = false;
+            for (int i = 0; i < Inventory.Instance.slots.Length; i++)
+            {
+                if (!Inventory.Instance.slots[i].IsEmpty && Inventory.Instance.slots[i].item == "Rope")
+                {
+                    alreadyHasRope = true;
+                    break;
+                }
+            }
+
+            if (pickupSound != null) 
+{
+    AudioSource.PlayClipAtPoint(pickupSound, transform.position);
+}
+
+            if (!alreadyHasRope)
+            {
+                Sprite icon = Resources.Load<Sprite>("Icon/Rope");
+                Inventory.Instance.Add("Rope", icon);
+            }
+
+            ItemBarUI barUI = FindObjectOfType<ItemBarUI>();
+            if (barUI != null) barUI.Toast("Got a Rope! Use it to tie the Spy.");
+        }
+
+        GameObject player = GameObject.FindWithTag("Player");
+        if (player != null)
+        {
+            RopeAbility ropeAbility = player.GetComponent<RopeAbility>();
+            if (ropeAbility != null) ropeAbility.PickUpRope();
+        }
 
         isPickedUp = true;
         SetVisuals(false);
-
         StartCoroutine(RespawnRoutine());
     }
 

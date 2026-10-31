@@ -15,6 +15,10 @@ public class SpherePlayer : MonoBehaviour
     [Header("Respawn")]
     public float fallLimitY = -10f;
 
+    [Header("Audio")]
+    public AudioClip rollingSound;   
+    public AudioSource audioSource;  
+
     Rigidbody rb;
     float radius;
     Vector3 spawnPoint;
@@ -41,6 +45,7 @@ public class SpherePlayer : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.maxAngularVelocity = 50f;
+
         var sc = GetComponent<SphereCollider>();
         radius = sc != null ? sc.radius * transform.lossyScale.x : 0.5f;
         spawnPoint = transform.position;
@@ -59,6 +64,26 @@ public class SpherePlayer : MonoBehaviour
         if (ProximityInteractor.UIOpen || Stunned) { moveInput = Vector2.zero; MobileJoystick.ConsumeJump(); return; }
 
         if (Input.GetKeyDown(KeyCode.Space) || MobileJoystick.ConsumeJump()) jumpQueued = true;
+
+                if (audioSource != null && rollingSound != null)
+        {
+       
+            float currentSpeed = rb.linearVelocity.magnitude;
+
+            if (currentSpeed > 0.5f) 
+            {
+                audioSource.clip = rollingSound;
+                audioSource.loop = true;
+                audioSource.pitch = Mathf.Clamp(currentSpeed / 7f, 0.6f, 1.5f); 
+                audioSource.volume = Mathf.Clamp(currentSpeed / 15f, 0.1f, 1f); 
+
+                if (!audioSource.isPlaying) audioSource.Play();
+            }
+            else
+            {
+                if (audioSource.isPlaying) audioSource.Stop(); 
+            }
+        }
     }
 
     void FixedUpdate()

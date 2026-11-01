@@ -101,7 +101,7 @@ public class AnimalBrain : MonoBehaviour
                 if (Time.time > retargetAt || Flat(target - transform.position).magnitude < 0.4f) NewWanderTarget();
                 MoveTowards(target, walkSpeed * (kind == Kind.Chicken ? 1.2f : 1f), dt, stayHome: true, idleChance: 0.35f);
                 break;
-
+                
             case State.Escaping:   // out through the gate
             {
                 Vector3 g = gate != null ? gate.transform.position : homeCentre;
@@ -144,7 +144,6 @@ public class AnimalBrain : MonoBehaviour
                 Vector3 spot = leader.position - Flat(leader.forward).normalized * 1.5f;
                 float dist = Flat(spot - transform.position).magnitude;
                 MoveTowards(spot, Mathf.Clamp(dist * 2.5f, 0f, runSpeed * 1.6f), dt, stopAt: 0.3f);
-                if (stuckFor > 1.2f && dist > 2.5f) StartHop(transform.position + Flat(spot - transform.position).normalized * 2.2f);   // stuck behind a fence: hop over it
                 // home? (inside its pen, or right at its gate)
                 bool home = Inside(transform.position, 0.3f)
                          || (gate != null && Flat(transform.position - gate.transform.position).magnitude < 3f);
@@ -191,11 +190,6 @@ public class AnimalBrain : MonoBehaviour
         leader = null;
         state = State.Returning;
         target = RandomInside(0.5f);
-        if (!Inside(transform.position, -0.3f) && gate != null)
-        {   // outside the fence (at the gate): hop over / through into the pen
-            Vector3 g = gate.transform.position;
-            StartHop(g + Flat(homeCentre - g).normalized * 2.2f);
-        }
         calmUntil = Time.time + 25f; nextLeave = calmUntil;
         if (local && CoinWallet.Exists) CoinWallet.Add(coins, kind + " returned");
         else if (leaderNet != null) leaderNet.GiveAnimalCoins(coins, kind.ToString());   // online: pay the player who brought it home

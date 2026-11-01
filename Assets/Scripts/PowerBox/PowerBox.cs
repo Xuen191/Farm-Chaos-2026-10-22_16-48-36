@@ -48,7 +48,8 @@ public class PowerBox : Interactable
 
     public override void Interact()
     {
-        if (powerOn) return; 
+        if (powerOn) { if (NetPlayer.IAmSpy && PowerGrid.SpyOverload()) ScoreKeeper.Add(40, "Sneaky overload!"); return; }   // Farm Chaos: spy sabotage
+        if (tripped) { if (!resetting) { StartCoroutine(ResetBreaker()); ScoreKeeper.Add(20, "Breaker reset!"); } return; }   // quick fix after the first one
         
         if (audioSource != null && openBoxSound != null) 
             audioSource.PlayOneShot(openBoxSound);

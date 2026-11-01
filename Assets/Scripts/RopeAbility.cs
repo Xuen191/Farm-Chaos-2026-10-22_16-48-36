@@ -27,6 +27,25 @@ public class RopeAbility : MonoBehaviour
         if (!hasRope) { errorMessage = "⚠️ Find a rope first!"; return false; }
         if (isTying) { errorMessage = "⚠️ Already tying someone!"; return false; }
 
+        // Farm Chaos: tie up whoever is closest - right guess (the spy) = +100 and the spy loses 50,
+        // wrong guess (a farmer) = -30. Only the host knows who the spy is, so it decides (NetPlayer.RequestTie).
+        if (NetPlayer.Local != null)
+        {
+            NetPlayer closest = null; float best = tieRadius;
+            foreach (var np in FindObjectsByType<NetPlayer>(FindObjectsSortMode.None))
+            {
+                if (np == NetPlayer.Local || !np.IsSpawned) continue;
+                float d = Vector3.Distance(np.transform.position, transform.position);
+                if (d < best) { best = d; closest = np; }
+            }
+            if (closest == null) { errorMessage = "Nobody close enough to tie up!"; return false; }
+            if (tieSound != null) AudioSource.PlayClipAtPoint(tieSound, closest.transform.position);
+            NetPlayer.Local.RequestTie(closest.OwnerClientId, tieDuration);
+            hasRope = false;                                   // one rope = one tie
+            return true;
+        }
+        if (NetSession.Online || NetPlayer.Local == null) { errorMessage = "Nobody here to tie up!"; return false; }
+
         Collider[] allPlayers = Physics.OverlapSphere(transform.position, tieRadius);
         Transform targetSpy = null;
 

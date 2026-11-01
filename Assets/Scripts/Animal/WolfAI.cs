@@ -158,6 +158,9 @@ rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.Fre
         }
     }
 
+    /// <summary>Farm Chaos: true while it's running away (scared off). Used by StickAttack for points.</summary>
+    public bool IsFleeing => CurrentState == State.Fleeing;
+
     public void GetHit()
     {
         hitCount++;

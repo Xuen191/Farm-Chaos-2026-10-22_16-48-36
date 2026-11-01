@@ -80,18 +80,21 @@ public class ItemEffects : MonoBehaviour
             case "Chicken Feed":
                 if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
                 ThrowFood(chickenFeedPrefab, p, "Chicken Feed"); 
+                AnimalBait.Drop(BaitSpot(p), "Chicken Feed");     // Farm Chaos: chickens come to eat it
                 message = "Dropped chicken feed!";
                 return true;
 
             case "Carrot":
                 if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
                 ThrowFood(carrotPrefab, p, "Carrot");
+                AnimalBait.Drop(BaitSpot(p), "Carrot");           // Farm Chaos: bunnies come to eat it
                 message = "Dropped carrot!";
                 return true;
 
             case "Fresh Hay":
                 if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
                 ThrowFood(freshHayPrefab, p, "Fresh Hay");
+                AnimalBait.Drop(BaitSpot(p), "Fresh Hay");        // Farm Chaos: sheep + cows love it
                 message = "Dropped fresh hay!";
                 return true;
 
@@ -138,6 +141,7 @@ public class ItemEffects : MonoBehaviour
                 nextWhistleTime = Time.time + whistleCooldown;
                 
                 if (whistleSound != null) AudioSource.PlayClipAtPoint(whistleSound, p.transform.position);
+                AnimalBait.Drop(p.transform.position, "Magic Whistle");   // Farm Chaos: animals nearby trot over
 
                 AnimalBrain[] allAnimals = FindObjectsByType<AnimalBrain>(FindObjectsSortMode.None);
                 
@@ -152,7 +156,7 @@ public class ItemEffects : MonoBehaviour
                     
                     foreach (var animal in allAnimals)
                     {
-                        animal.AttractedTo(p.transform.position); 
+                        if (!NetPlayer.IAmSpy) animal.AttractedTo(p.transform.position);   // the spy's whistle only scares (stinky)
                         
                         if (attractedAnimals == "") attractedAnimals = animal.name;
                         else attractedAnimals += ", " + animal.name;
@@ -170,7 +174,7 @@ public class ItemEffects : MonoBehaviour
                     string errorMsg;
                     bool success = rope.TryTieSpy(out errorMsg); 
                     
-                    if (success) { message = "Tied the spy!"; return true; }
+                    if (success) { message = "Tied them up!"; return true; }
                     else { message = errorMsg; return false; }
                 }
                 message = "Can't use rope here.";
@@ -208,6 +212,7 @@ public class ItemEffects : MonoBehaviour
 
     private void AttractAnimals(Vector3 position, string foodType)
     {
+        if (NetPlayer.IAmSpy) return;   // Farm Chaos: the spy's bait is stinky (AnimalBait) - it never attracts
         AnimalBrain[] allAnimals = FindObjectsByType<AnimalBrain>(FindObjectsSortMode.None);
         
         int count = 0;
@@ -332,5 +337,13 @@ public class ItemEffects : MonoBehaviour
         }
         Destroy(flash.gameObject);
         if (puff != null) Destroy(puff);
+    }
+
+    // where thrown food lands (roughly): a couple of steps in front of you
+    Vector3 BaitSpot(SpherePlayer p)
+    {
+        var cam = Camera.main;
+        Vector3 fwd = cam != null ? Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized : p.transform.forward;
+        return p.transform.position + fwd * 2f;
     }
 }

@@ -15,13 +15,18 @@ public class ChibiLook : MonoBehaviour
     {
         public int skin = 0, shirt = 0, outfit = 4, shoes = 0, hairColor = 0, hat = 6, hairStyle = 1, hatColor = 3, socks = 0;
         public int face = 0;   // default expression
+        public string name = "";   // your name (shown on your name tag)
     }
 
     // palettes (pastel + cozy)
     // body colours for the bean (cream, peach, pink, mint, sky, lilac, butter, cloud grey)
     public static readonly Color[] SkinTones = { Hex("FFEEE2"), Hex("FFD9C2"), Hex("FFD1DC"), Hex("CFF0DD"), Hex("D4E6FF"), Hex("E4D8FF"), Hex("FFF0B8"), Hex("E6E4EE") };
-    public static readonly Color[] Clothes = { Hex("8EC5F0"), Hex("F4B8C1"), Hex("9BDEA8"), Hex("FFD27A"), Hex("C3A6F2"), Hex("FF9E7A"), Hex("FFF0D9"), Hex("6B6F8A") };
-    public static readonly Color[] HairColors = { Hex("7A5240"), Hex("3A2E2A"), Hex("E8C27A"), Hex("F28FB1"), Hex("8EC5F0"), Hex("B98AE8"), Hex("E0603E"), Hex("F2F0EA") };
+    // the first 8 are free; the 6 after them are SHOP colours (Gold, Midnight, Lavender Dream, Strawberry, Cocoa, Mint Choc)
+    public const int FreeColours = 8;
+    public static readonly Color[] Clothes = { Hex("8EC5F0"), Hex("F4B8C1"), Hex("9BDEA8"), Hex("FFD27A"), Hex("C3A6F2"), Hex("FF9E7A"), Hex("FFF0D9"), Hex("6B6F8A"),
+                                               Hex("F2C94C"), Hex("3B3F6B"), Hex("D9B8F5"), Hex("FF7A9A"), Hex("8B5E4A"), Hex("7FD1B9") };
+    public static readonly Color[] HairColors = { Hex("7A5240"), Hex("3A2E2A"), Hex("E8C27A"), Hex("F28FB1"), Hex("8EC5F0"), Hex("B98AE8"), Hex("E0603E"), Hex("F2F0EA"),
+                                                  Hex("F2C94C"), Hex("3B3F6B"), Hex("D9B8F5"), Hex("FF7A9A"), Hex("8B5E4A"), Hex("7FD1B9") };
     public static readonly Color[] Shirts = { Hex("FFFFFF"), Hex("FFF0D9"), Hex("FDE2E8"), Hex("E2F1FF"), Hex("E6F7E4"), Hex("FFF6C9"), Hex("EDE4FF") };
     public static readonly Color[] ShoeColors = { Hex("5A3A33"), Hex("A87B5C"), Hex("E07A8E"), Hex("3E4A6B"), Hex("F2F0EA"), Hex("D9A441") };
     public static readonly string[] HairStyles = { "None", "Bob", "Spiky", "Pigtails", "Long" };
@@ -39,7 +44,7 @@ public class ChibiLook : MonoBehaviour
     // same computer, so each one gets its own save (otherwise all the test players would share one outfit).
     static string Key => "FarmChaos.ChibiLook" + TestWindowSuffix;
     static string suffix;
-    static string TestWindowSuffix
+    public static string TestWindowSuffix
     {
         get
         {
@@ -118,14 +123,14 @@ public class ChibiLook : MonoBehaviour
     {
         string n = matName.Replace(" (Instance)", "");
         if (n.EndsWith("HatMain")) return data.hat == 1 ? Hex("E9CF7A") : Clothes[Wrap(data.hatColor, Clothes.Length)];
-        if (n.EndsWith("HatAccent")) return Clothes[Wrap(data.hatColor + 6, Clothes.Length)];
+        if (n.EndsWith("HatAccent")) return Clothes[Wrap(Wrap(data.hatColor, FreeColours) + 6, FreeColours)];
         if (n.EndsWith("Skin")) return SkinTones[Wrap(data.skin, SkinTones.Length)];
         if (n.EndsWith("Shirt")) return Shirts[Wrap(data.shirt, Shirts.Length)];
         if (n.EndsWith("Outfit")) return Clothes[Wrap(data.outfit, Clothes.Length)];
         if (n.EndsWith("Shoes")) return ShoeColors[Wrap(data.shoes, ShoeColors.Length)];
         if (n.EndsWith("Socks")) return Shirts[Wrap(data.socks, Shirts.Length)];
         if (n.EndsWith("Hair")) return HairColors[Wrap(data.hairColor, HairColors.Length)];
-        if (n.EndsWith("Accent")) return Clothes[Wrap(data.outfit + 1, Clothes.Length)];
+        if (n.EndsWith("Accent")) return Clothes[Wrap(Wrap(data.outfit, FreeColours) + 1, FreeColours)];
         return null;
     }
 

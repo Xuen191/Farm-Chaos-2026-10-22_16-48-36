@@ -2,7 +2,12 @@
 //
 //   In the pen ....... grazes and wanders around inside its pen
 //   Gate pops open ... (power cut) runs out through the gate and roams the farm, scurrying away from players
-//   Caught ........... touch an escaped animal and it follows you in a little conga line
+//   Catching ......... animals are SKITTISH: run at them and they flee. SNEAK up (hold Shift / tilt the stick a little),
+//                      then GRAB with good timing (a ring shrinks round the animal - grab in the green). Miss = it bolts.
+//   Bait ............. drop food: animals that like it come over to eat and are CALM while eating (easy grab).
+//   Personalities .... chickens zig-zag away fast - bunnies dash off and HIDE in bushes - sheep stick together
+//                      (catch one, its flock follows) - cows never run, but are STUBBORN (stop and stare) unless fed.
+//   Caught ........... it follows you in a little conga line
 //   Returned ......... lead it back into its OWN pen (or right up to its gate) -> coins for you!
 //   If the gate is still open, a returned animal settles for a while... then may wander off again. Fix the power!
 //
@@ -17,7 +22,7 @@ using UnityEngine;
 public class AnimalBrain : MonoBehaviour
 {
     public enum Kind { Chicken, Bunny, Sheep, Cow }
-    public enum State { Grazing, Escaping, Roaming, Following, Returning }
+    public enum State { Grazing, Escaping, Roaming, Following, Returning, Eating, Hiding }
 
     [Header("Who")]
     public Kind kind;
@@ -37,6 +42,16 @@ public class AnimalBrain : MonoBehaviour
     public float catchDistance = 2f;
 
     public State state { get; private set; } = State.Grazing;
+
+    // ---- catching 2.0
+    /// <summary>Can a player try to grab it right now? (out of its pen and not already caught)</summary>
+    public bool Catchable => state == State.Roaming || state == State.Escaping || state == State.Eating || state == State.Hiding;
+    /// <summary>Eating bait: calm, an easy grab.</summary>
+    public bool Calm => state == State.Eating;
+    /// <summary>How fast the grab ring shrinks (seconds) - quick animals are harder.</summary>
+    public float GrabTime => kind == Kind.Chicken ? 0.85f : kind == Kind.Bunny ? 1.0f : kind == Kind.Sheep ? 1.3f : 1.6f;
+    const float SneakSpeed = 3.2f;                 // players moving slower than this can creep up without scaring them
+    bool fed; float startledUntil, eatUntil, hideUntil, stubbornAt; Vector3 eatSpot, hideSpot;
     public static readonly List<AnimalBrain> All = new List<AnimalBrain>();
     /// <summary>Fires when someone returns an animal to its pen (animal, was it the local player).</summary>
     public static event System.Action<AnimalBrain, bool> Returned;
@@ -118,17 +133,19 @@ public class AnimalBrain : MonoBehaviour
 
             case State.Roaming:
             {
-                CheckCatch();
-                if (state != State.Roaming) break;
-
+                if (TryStink(dt)) break;
+                if (TryBait()) break;
                 var threat = NearestPlayer(out float d);
-                if (threat != null && d < scareDistance)
-                {   
+                bool startled = Time.time < startledUntil;
+                bool scared = kind != Kind.Cow && threat != null &&
+                              (startled ? d < scareDistance * 1.6f : d < scareDistance && PlayerSpeed(threat) > SneakSpeed);
+                if (scared)
+                {
+                    if (kind == Kind.Bunny && TryHide(threat)) break;            // bunnies dive into the nearest bush
+                    // scurry away (chickens zig-zag)
                     Vector3 away = Flat(transform.position - threat.position).normalized;
-                    if (kind == Kind.Chicken || kind == Kind.Bunny) 
-                        away = Quaternion.Euler(0, Mathf.Sin(Time.time * 6f + seed) * 50f, 0) * away;
-                    
-                    MoveTowards(transform.position + away * 3f, runSpeed, dt);
+                    if (kind == Kind.Chicken || kind == Kind.Bunny) away = Quaternion.Euler(0, Mathf.Sin(Time.time * 6f + seed) * 50f, 0) * away;
+                    MoveTowards(transform.position + away * 3f, runSpeed * (startled ? 1.3f : 1f), dt);
                 }
                 else
                 {
@@ -138,10 +155,30 @@ public class AnimalBrain : MonoBehaviour
                 break;
             }
 
+            case State.Eating:      // munching bait: calm (easy to grab)
+            {
+                float toFood = Flat(eatSpot - transform.position).magnitude;
+                if (toFood > 0.7f) MoveTowards(eatSpot, walkSpeed * 1.8f, dt, stopAt: 0.6f);
+                else { speedNow = 0f; transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(Flat(eatSpot - transform.position).normalized + transform.forward * 0.01f), 180f * dt); }
+                if (Time.time > eatUntil) { fed = true; state = State.Roaming; NewRoamTarget(); }
+                else if (AnimalBait.NearestStink(transform.position, 8f, out _)) { state = State.Roaming; NewRoamTarget(); }   // eww - off it goes
+                break;
+            }
+
+            case State.Hiding:      // a bunny tucked into a bush
+            {
+                if (Flat(hideSpot - transform.position).magnitude > 0.4f) MoveTowards(hideSpot, runSpeed * 1.2f, dt, stopAt: 0.3f);
+                else speedNow = 0f;
+                if (Time.time > hideUntil) { state = State.Roaming; NewRoamTarget(); }
+                break;
+            }
+
             case State.Following:
             {
                 if (leader == null) { state = State.Roaming; NewRoamTarget(); break; }
-                Vector3 spot = leader.position - Flat(leader.forward).normalized * 1.5f;
+                // stubborn cows: stop and stare every few steps... unless they've had a snack
+                if (kind == Kind.Cow && !fed && Time.time > stubbornAt) { pauseUntil = Time.time + 1.6f; stubbornAt = Time.time + Random.Range(3.5f, 6f); }
+                Vector3 spot = leader.position - Flat(leader.forward).normalized * (1.3f + followIndex * 1.1f);
                 float dist = Flat(spot - transform.position).magnitude;
                 MoveTowards(spot, Mathf.Clamp(dist * 2.5f, 0f, runSpeed * 1.6f), dt, stopAt: 0.3f);
                 // home? (inside its pen, or right at its gate)
@@ -159,6 +196,116 @@ public class AnimalBrain : MonoBehaviour
         Animate(dt);
     }
 
+    // ---------------------------------------------------------------- catching (host decides)
+    /// <summary>Host: a player tried to grab this animal (success = they timed it right, or it was calm).</summary>
+    public void HostCatch(Transform who, bool local, NetPlayer net, bool success)
+    {
+        if (!Catchable || who == null) return;
+        if (!success && !Calm)
+        {   // fumbled it: the animal panics and bolts
+            startledUntil = Time.time + 3f;
+            if (state == State.Hiding || state == State.Eating) { state = State.Roaming; NewRoamTarget(); }
+            return;
+        }
+        Follow(who, local, net);
+        if (kind == Kind.Sheep)                                   // a sheep's flock comes along too
+            foreach (var a in All)
+                if (a != this && a.kind == Kind.Sheep && a.Catchable && Flat(a.transform.position - transform.position).magnitude < 7f)
+                    a.Follow(who, local, net);
+    }
+
+    /// <summary>Host: the spy lets go of everything following them - they scatter. Returns how many.</summary>
+    public static int ReleaseFollowers(Transform who, out Kind kind, out Vector3 where)
+    {
+        int n = 0; kind = Kind.Chicken; where = who != null ? who.position : Vector3.zero;
+        foreach (var a in All.ToArray())
+        {
+            if (a == null || a.state != State.Following || a.leader != who) continue;
+            a.leader = null; a.leaderNet = null;
+            a.state = State.Roaming; a.startledUntil = Time.time + 3f; a.NewRoamTarget();
+            kind = a.kind; n++;
+        }
+        return n;
+    }
+
+    // ---- stinky bait (the spy's): animals nearby run away from it
+    bool TryStink(float dt)
+    {
+        if (!AnimalBait.NearestStink(transform.position, 8f, out var stink)) return false;
+        startledUntil = Time.time + 2f;
+        Vector3 away = Flat(transform.position - stink).normalized;
+        if (away.sqrMagnitude < 0.01f) away = transform.forward;
+        MoveTowards(transform.position + away * 3f, runSpeed * 1.2f, dt);
+        return true;
+    }
+
+    void Follow(Transform who, bool local, NetPlayer net)
+    {
+        leader = who; leaderIsLocal = local; leaderNet = net;
+        followIndex = 0; foreach (var a in All) if (a != this && a.state == State.Following && a.leader == leader) followIndex++;
+        state = State.Following; hopping = false;
+        stubbornAt = Time.time + 2.5f;
+    }
+
+    // ---- bait: hungry animals that like this food come over and eat (calm while they eat)
+    bool TryBait()
+    {
+        if (fed && Time.time < eatUntil + 20f) return false;      // just ate, not hungry yet
+        if (!AnimalBait.Nearest(kind, transform.position, 11f, out var spot)) return false;
+        eatSpot = spot + Random.insideUnitSphere.Flat() * 0.6f;
+        eatUntil = Time.time + Random.Range(7f, 10f);
+        state = State.Eating;
+        return true;
+    }
+
+    // ---- bunnies: dash into the nearest bush and sit very still for a bit
+    static List<Transform> bushes;
+    bool TryHide(Transform threat)
+    {
+        if (bushes == null)
+        {
+            bushes = new List<Transform>();
+            foreach (var r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                if (r.name.ToLowerInvariant().Contains("bush")) bushes.Add(r.transform);
+        }
+        Transform best = null; float bd = 12f;
+        foreach (var b in bushes)
+        {
+            if (b == null) continue;
+            float d = Flat(b.position - transform.position).magnitude;
+            if (d < bd && Flat(b.position - threat.position).magnitude > d) { bd = d; best = b; }   // a bush away from the player
+        }
+        if (best == null) return false;
+        hideSpot = best.position; hideUntil = Time.time + Random.Range(6f, 10f);
+        state = State.Hiding;
+        return true;
+    }
+
+    // ---- how fast is each player moving? (sneaking vs charging in)
+    static readonly Dictionary<Transform, (Vector3 pos, float speed)> playerMotion = new Dictionary<Transform, (Vector3, float)>();
+    static int motionFrame = -1;
+    static float PlayerSpeed(Transform t)
+    {
+        if (motionFrame != Time.frameCount)
+        {
+            motionFrame = Time.frameCount;
+            float dt = Mathf.Max(Time.deltaTime, 0.001f);
+            foreach (var p in Players())
+            {
+                Vector3 now = Flat(p.t.position);
+                if (playerMotion.TryGetValue(p.t, out var was))
+                    playerMotion[p.t] = (now, Mathf.Lerp(was.speed, (now - was.pos).magnitude / dt, 1f - Mathf.Exp(-8f * dt)));
+                else playerMotion[p.t] = (now, 0f);
+            }
+        }
+        return t != null && playerMotion.TryGetValue(t, out var m) ? m.speed : 0f;
+    }
+
+    // ---- online: catching by number (every player's farm lists the animals in the same order)
+    public static int IndexOf(AnimalBrain a) => Sorted().IndexOf(a);
+    public static AnimalBrain AtIndex(int i) { var l = Sorted(); return i >= 0 && i < l.Count ? l[i] : null; }
+
+    // ---------------------------------------------------------------- returning
     void CheckCatch()
     {
         foreach (var a in All)
@@ -306,7 +453,12 @@ public class AnimalBrain : MonoBehaviour
             var tryDir = Quaternion.Euler(0f, off * side, 0f) * want;
             if (!Blocked(tryDir)) { dir = tryDir; break; }
         }
-        if (dir == Vector3.zero) { speedNow = 0f; stuckFor += dt; if (stuckFor > 0.6f) retargetAt = 0f; return; }
+        if (dir == Vector3.zero)
+        {
+            speedNow = 0f; stuckFor += dt; if (stuckFor > 0.6f) retargetAt = 0f;
+            if (stuckFor > 3f) StartHop(stayHome ? RandomInside(0.6f) : transform.position + Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward * 2.5f);   // wedged for ages: hop free
+            return;
+        }
         float step = Mathf.Min(speed * dt, d.magnitude);
         Vector3 next = transform.position + dir * step;
         if (stayHome && !Inside(next, 0f))
@@ -317,6 +469,7 @@ public class AnimalBrain : MonoBehaviour
         next.y = GroundY(next);
         float moved = Flat(next - transform.position).magnitude;
         stuckFor = moved < step * 0.3f ? stuckFor + dt : 0f;
+        if (stuckFor > 3f && stayHome) { StartHop(RandomInside(0.6f)); return; }   // pinned against something in the pen: hop somewhere free
         transform.position = next;
         transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir, Vector3.up), 360f * dt);
         speedNow = moved / Mathf.Max(dt, 0.0001f);
@@ -331,12 +484,10 @@ public class AnimalBrain : MonoBehaviour
             if (h.collider.transform.IsChildOf(transform)) continue;
             if (h.collider.GetComponentInParent<AnimalBrain>() != null) continue;
             if (h.collider.GetComponentInParent<SpherePlayer>() != null || h.collider.GetComponentInParent<NetPlayer>() != null) continue;
-            if (h.normal.y > 0.6f) continue;     
-            
-            string objName = h.collider.gameObject.name.ToLower();
-            if (objName.Contains("bush") || objName.Contains("rabbit_area") || objName.Contains("grass")) 
-                continue;
-
+            if (h.normal.y > 0.6f) continue;                                   // floor / gentle slope
+            if (h.distance <= 0f) continue;                                    // already overlapping it (spawned in a bush/hutch): let it walk out
+            string objName = h.collider.gameObject.name.ToLower();             // (friend's fix) bushes / grass / the rabbit area never block
+            if (objName.Contains("bush") || objName.Contains("rabbit_area") || objName.Contains("grass")) continue;
             return true;
         }
         return false;
@@ -443,7 +594,8 @@ public class AnimalBrain : MonoBehaviour
 
     public void AttractedTo(Vector3 targetPosition)
     {
-        if (state == State.Following || state == State.Escaping) return;
+        // only animals already loose on the farm come over - never pull animals out of their pen
+        if (Puppet || (state != State.Roaming && state != State.Hiding)) return;
 
         target = targetPosition;
         retargetAt = Time.time + 10f; 

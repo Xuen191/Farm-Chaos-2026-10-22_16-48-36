@@ -40,11 +40,98 @@ public class RoundEndScreen : MonoBehaviour
         }
         // this font has no ":" - write the time without it
         if (panel != null) foreach (var t in panel.GetComponentsInChildren<TMP_Text>(true)) if (t.name == "Subtitle") t.text = "6 AM... the night is over!";
+        BuildResults();
         clock = RoundClock.Instance;
         if (clock != null) clock.RoundEnded += Show;
+        ScoreKeeper.ResultsReady += ShowResults;
     }
 
-    void OnDestroy() { if (clock != null) clock.RoundEnded -= Show; }
+    void OnDestroy() { if (clock != null) clock.RoundEnded -= Show; ScoreKeeper.ResultsReady -= ShowResults; }
+
+    // ------------------------------------------------------------ results board (who won, the spy, everyone's score)
+    TMP_Text titleText, subText, paperText;
+    RectTransform board;
+
+    void BuildResults()
+    {
+        if (panel == null) return;
+        foreach (var t in panel.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (t.name == "Title") titleText = t;
+            if (t.name == "Subtitle") subText = t;
+        }
+        if (titleText == null) return;
+        var card = (RectTransform)titleText.transform.parent;
+        card.sizeDelta = new Vector2(Mathf.Max(card.sizeDelta.x, 940f), 900f);
+        foreach (Transform c in card) if (c.name == "Sun") c.gameObject.SetActive(false);
+        titleText.rectTransform.anchoredPosition = new Vector2(0, -85);
+        titleText.enableAutoSizing = true; titleText.fontSizeMin = 40; titleText.fontSizeMax = 92;
+        titleText.rectTransform.sizeDelta = new Vector2(880, 110);
+        subText.rectTransform.anchoredPosition = new Vector2(0, -180);
+        subText.rectTransform.sizeDelta = new Vector2(880, 80);
+        subText.enableAutoSizing = true; subText.fontSizeMin = 22; subText.fontSizeMax = 38;
+        subText.textWrappingMode = TextWrappingModes.Normal;
+
+        board = new GameObject("Score_Board", typeof(RectTransform)).GetComponent<RectTransform>();
+        board.SetParent(card, false);
+        board.anchorMin = board.anchorMax = new Vector2(0.5f, 1f); board.pivot = new Vector2(0.5f, 1f);
+        board.anchoredPosition = new Vector2(0, -240); board.sizeDelta = new Vector2(820, 340);
+
+        paperText = new GameObject("Paper_Money", typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
+        paperText.transform.SetParent(card, false);
+        paperText.rectTransform.anchorMin = paperText.rectTransform.anchorMax = new Vector2(0.5f, 0f);
+        paperText.rectTransform.anchoredPosition = new Vector2(0, 236); paperText.rectTransform.sizeDelta = new Vector2(860, 50);
+        paperText.fontSize = 34; paperText.fontStyle = FontStyles.Bold; paperText.alignment = TextAlignmentOptions.Center;
+        paperText.color = new Color32(0x3E, 0x7D, 0x45, 255); paperText.raycastTarget = false;
+    }
+
+    void ShowResults()
+    {
+        var b = ScoreKeeper.Results;
+        if (b == null || titleText == null) return;
+        bool farmers = b.farmersWin;
+        if (b.spyMode)
+        {
+            titleText.text = farmers ? "FARMERS WIN!" : "THE SPY WINS!";
+            titleText.color = farmers ? (Color)new Color32(0x3F, 0xAF, 0x5A, 255) : new Color32(0x8E, 0x5C, 0xD6, 255);
+            subText.text = $"The spy was <color=#8E5CD6>{b.spyName}</color>!\n<size=80%>{b.home}/{b.total} animals home by sunrise</size>";
+        }
+        else
+        {
+            titleText.text = farmers ? "THE FARM IS SAVED!" : "THE ANIMALS GOT AWAY...";
+            titleText.color = farmers ? (Color)new Color32(0x3F, 0xAF, 0x5A, 255) : new Color32(0xE0, 0x6C, 0x4C, 255);
+            subText.text = $"{b.home}/{b.total} animals home by sunrise";
+        }
+
+        for (int i = board.childCount - 1; i >= 0; i--) Destroy(board.GetChild(i).gameObject);
+        ulong me = Online ? Unity.Netcode.NetworkManager.Singleton.LocalClientId : 0;
+        int n = Mathf.Min(b.entries.Count, PartySettings.MaxPartySize);
+        for (int i = 0; i < n; i++)
+        {
+            var e = b.entries[i];
+            bool won = b.spyMode ? (e.spy != farmers) : farmers;
+            var row = new GameObject("Row", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            row.SetParent(board, false);
+            row.anchorMin = row.anchorMax = new Vector2(0.5f, 1f); row.pivot = new Vector2(0.5f, 1f);
+            row.anchoredPosition = new Vector2(0, -i * 62f); row.sizeDelta = new Vector2(820, 56);   // fits 6 rows
+            row.GetComponent<Image>().color = won ? new Color32(0xD8, 0xF0, 0xDC, 255) : new Color32(0xF3, 0xE9, 0xE0, 255);
+            string rank = i == 0 ? "1ST" : i == 1 ? "2ND" : i == 2 ? "3RD" : (i + 1) + "TH";
+            Cell(row, rank, new Vector2(-340, 0), 120, TextAlignmentOptions.Center, i == 0 ? new Color32(0xE0, 0xA8, 0x2C, 255) : new Color32(0x9A, 0x86, 0x78, 255));
+            string name = e.name + (e.spy ? "  <size=70%><color=#8E5CD6>SPY</color></size>" : "") + (e.id == me ? "  <size=70%>YOU</size>" : "");
+            Cell(row, name, new Vector2(-20, 0), 480, TextAlignmentOptions.Left, new Color32(0x6B, 0x4A, 0x3A, 255));
+            Cell(row, e.score.ToString(), new Vector2(320, 0), 160, TextAlignmentOptions.Right, new Color32(0xE0, 0x6C, 0x8C, 255));
+        }
+        paperText.text = ScoreKeeper.LastPaper > 0 ? $"Your score {ScoreKeeper.FinalScore}... +{ScoreKeeper.LastPaper} paper money!" : $"Your score {ScoreKeeper.FinalScore}";
+    }
+
+    void Cell(RectTransform row, string text, Vector2 pos, float width, TextAlignmentOptions align, Color c)
+    {
+        var t = new GameObject("Cell", typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
+        t.transform.SetParent(row, false);
+        t.rectTransform.anchoredPosition = pos; t.rectTransform.sizeDelta = new Vector2(width, 54);
+        t.text = text; t.fontSize = 36; t.fontStyle = FontStyles.Bold; t.alignment = align; t.color = c; t.raycastTarget = false;
+        t.enableAutoSizing = true; t.fontSizeMin = 18; t.fontSizeMax = 36; t.textWrappingMode = TextWrappingModes.NoWrap;
+    }
 
     // a second button next to PLAY AGAIN, plus a little status line above them
     void BuildLobbyButton()
@@ -81,6 +168,15 @@ public class RoundEndScreen : MonoBehaviour
     {
         if (panel != null) panel.SetActive(true);
         shown = 0f; voted = false; leaving = false;
+        // the results: solo = right now; online = when the host has everyone's scores
+        if (titleText != null) { titleText.text = "SUNRISE!"; subText.text = Online ? "Counting the scores..." : ""; }
+        if (paperText != null) paperText.text = "";
+        if (!Online)
+        {
+            var me = new System.Collections.Generic.List<ScoreKeeper.Entry> { new ScoreKeeper.Entry { id = 0, name = ScoreKeeper.MyName(), score = ScoreKeeper.Score } };
+            ScoreKeeper.SetResults(ScoreKeeper.Decide(me, ulong.MaxValue, false), 0);
+        }
+        else if (ScoreKeeper.Results != null) ShowResults();
         // freeze every sphere player
         foreach (var p in FindObjectsByType<SpherePlayer>(FindObjectsSortMode.None))
         {

@@ -17,6 +17,7 @@ public class ChibiWardrobeUI : MonoBehaviour
         public string name; public int count; public float focus, dist;
         public Func<ChibiLook.Data, int> get; public Action<ChibiLook.Data, int> set;
         public Func<int, string> label; public Func<int, Color?> swatch;
+        public Func<int, bool> allowed;   // shop colours you haven't bought are skipped
     }
 
     ChibiLook look; ChibiMotor motor; SpherePlayer player; CameraFollow follow; Camera cam;
@@ -27,9 +28,37 @@ public class ChibiWardrobeUI : MonoBehaviour
     Canvas[] otherCanvases;
     int cat;
     bool open;
+    TMP_InputField nameField;
+
+    /// <summary>Letters, numbers and spaces only (the game font has no fancy symbols), max 12.</summary>
+    public static string CleanName(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        var sb = new System.Text.StringBuilder();
+        foreach (char ch in s) if (ch < 128 && (char.IsLetterOrDigit(ch) || ch == ' ' || ch == '-' || ch == '_' || ch == '!' || ch == '.')) sb.Append(ch);
+        var r = sb.ToString().Trim();
+        return r.Length > 12 ? r.Substring(0, 12) : r;
+    }
 
     static readonly Color Cream = new Color32(0xFF, 0xF6, 0xEC, 245), Brown = new Color32(0x6B, 0x4A, 0x3A, 255),
         Pink = new Color32(0xF4, 0xB8, 0xC1, 255), Mint = new Color32(0x8C, 0xCF, 0xA4, 255), TabOff = new Color32(0xFF, 0xFF, 0xFF, 230);
+
+    public static ChibiWardrobeUI Instance { get; private set; }
+    public bool IsOpen => open;
+    float distScale = 1f;       // mirror mode: camera a bit further back so the mirror fits in
+
+    void Awake() { Instance = this; }
+    void OnDestroy() { if (Instance == this) Instance = null; }
+
+    /// <summary>Changing tent: face the mirror, camera over your shoulder (camFrom = direction from you to the camera).</summary>
+    public void OpenAtMirror(Vector3 faceDir, Vector3 camFrom)
+    {
+        Open();
+        if (!open || motor == null) return;
+        motor.faceDir = faceDir;
+        camFrom.y = 0f; if (camFrom.sqrMagnitude > 0.01f) lockDir = camFrom.normalized;
+        distScale = 1.45f;
+    }
 
     void Start()
     {
@@ -40,11 +69,14 @@ public class ChibiWardrobeUI : MonoBehaviour
             => new Cat { name = n, count = count, focus = focus, dist = dist, get = g, set = s, label = l, swatch = sw };
         // Bean Buddy: hair, hair colour, hat, hat colour, face, sweatshirt, body colour
         cats.Add(C("Hair", ChibiLook.HairStyles.Length, 0.85f, 2.2f, d => d.hairStyle, (d, i) => d.hairStyle = i, i => ChibiLook.HairStyles[i]));
-        cats.Add(C("Hair Colour", ChibiLook.HairColors.Length, 0.85f, 2.2f, d => d.hairColor, (d, i) => d.hairColor = i, i => "Colour", i => ChibiLook.HairColors[i]));
+        cats.Add(C("Hair Colour", ChibiLook.HairColors.Length, 0.85f, 2.2f, d => d.hairColor, (d, i) => d.hairColor = i, ColourName, i => ChibiLook.HairColors[i]));
+        cats[cats.Count - 1].allowed = ShopCatalog.ColourAllowed;
         cats.Add(C("Hat", ChibiLook.Hats.Length, 0.9f, 2.3f, d => d.hat, (d, i) => d.hat = i, i => Pretty(ChibiLook.Hats[i])));
-        cats.Add(C("Hat Colour", ChibiLook.Clothes.Length, 0.9f, 2.3f, d => d.hatColor, (d, i) => d.hatColor = i, i => "Colour", i => ChibiLook.Clothes[i]));
+        cats.Add(C("Hat Colour", ChibiLook.Clothes.Length, 0.9f, 2.3f, d => d.hatColor, (d, i) => d.hatColor = i, ColourName, i => ChibiLook.Clothes[i]));
+        cats[cats.Count - 1].allowed = ShopCatalog.ColourAllowed;
         cats.Add(C("Face", 9, 0.78f, 1.7f, d => d.face, (d, i) => d.face = i, i => ((ChibiLook.Face)i).ToString()));
-        cats.Add(C("Sweater", ChibiLook.Clothes.Length, 0.55f, 2.3f, d => d.outfit, (d, i) => d.outfit = i, i => "Colour", i => ChibiLook.Clothes[i]));
+        cats.Add(C("Sweater", ChibiLook.Clothes.Length, 0.55f, 2.3f, d => d.outfit, (d, i) => d.outfit = i, ColourName, i => ChibiLook.Clothes[i]));
+        cats[cats.Count - 1].allowed = ShopCatalog.ColourAllowed;
         cats.Add(C("Body", ChibiLook.SkinTones.Length, 0.65f, 2.7f, d => d.skin, (d, i) => d.skin = i, i => "Colour", i => ChibiLook.SkinTones[i]));
     }
 
@@ -90,7 +122,14 @@ public class ChibiWardrobeUI : MonoBehaviour
 
         if (root == null) Build();
         root.gameObject.SetActive(true);
+        if (nameField != null) nameField.SetTextWithoutNotify(look.data.name ?? "");
         Select(0);
+    }
+
+    static string ColourName(int i)
+    {
+        int extra = i - ChibiLook.FreeColours;
+        return extra >= 0 && extra < ShopCatalog.Colours.Length ? ShopCatalog.Colours[extra].name : "Colour";
     }
 
     void Close()
@@ -108,7 +147,8 @@ public class ChibiWardrobeUI : MonoBehaviour
             var rb = player.GetComponent<Rigidbody>(); if (rb != null) rb.isKinematic = false;
             player.enabled = true;
         }
-        if (motor != null) motor.posing = false;
+        if (motor != null) { motor.posing = false; motor.faceDir = Vector3.zero; }
+        distScale = 1f;
         look.SetExpression(ChibiLook.Face.Happy, 1.2f);
     }
 
@@ -122,8 +162,9 @@ public class ChibiWardrobeUI : MonoBehaviour
         Vector3 feet = motor.transform.position;
         Vector3 flat = lockDir;   // fixed when the wardrobe opened - no drifting/spinning
         Vector3 right = Vector3.Cross(Vector3.up, -flat).normalized;
-        Vector3 focus = feet + Vector3.up * c.focus + right * (c.dist * 0.15f);   // chibi sits left of centre, menu on the right
-        Vector3 pos = focus + flat * c.dist + Vector3.up * c.dist * 0.18f;
+        float dist = c.dist * distScale;
+        Vector3 focus = feet + Vector3.up * c.focus + right * (dist * 0.15f);   // chibi sits left of centre, menu on the right
+        Vector3 pos = focus + flat * dist + Vector3.up * dist * 0.18f;
         float k = 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime);
         cam.transform.position = Vector3.Lerp(cam.transform.position, pos, k);
         cam.transform.rotation = Quaternion.Slerp(cam.transform.rotation, Quaternion.LookRotation(focus - cam.transform.position), k);
@@ -140,7 +181,12 @@ public class ChibiWardrobeUI : MonoBehaviour
     void Step(int dir)
     {
         var c = cats[cat];
-        int v = ((c.get(look.data) + dir) % c.count + c.count) % c.count;
+        int v = c.get(look.data);
+        for (int n = 0; n < c.count; n++)                     // skip shop colours you haven't bought yet
+        {
+            v = ((v + dir) % c.count + c.count) % c.count;
+            if (c.allowed == null || c.allowed(v)) break;
+        }
         c.set(look.data, v);
         if (c.name == "Face") look.SetExpression((ChibiLook.Face)v, 0f);
         look.Apply();
@@ -173,8 +219,20 @@ public class ChibiWardrobeUI : MonoBehaviour
         swipe.GetComponent<Image>().color = new Color(0, 0, 0, 0.001f);
         swipe.GetComponent<SwipeCatcher>().Swiped += d => Step(d);
 
-        var title = Box(root, Cream, new Vector2(380, 80), new Vector2(0.5f, 1f), new Vector2(-180, -70));
-        Txt(title, "My Farmer", 44, new Color32(0xE0, 0x6C, 0x8C, 255), Vector2.zero, new Vector2(360, 70));
+        // your name (shown on your name tag online) - tap to type
+        var title = Box(root, Cream, new Vector2(460, 96), new Vector2(0.5f, 1f), new Vector2(-180, -78));
+        title.GetComponent<Image>().raycastTarget = true;
+        var label = Txt(title, "MY NAME", 20, new Color(0.42f, 0.29f, 0.23f, 0.6f), new Vector2(0, 32), new Vector2(440, 26));
+        label.fontStyle = FontStyles.Normal;
+        var area = new GameObject("Text_Area", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
+        area.SetParent(title, false); area.anchorMin = Vector2.zero; area.anchorMax = Vector2.one; area.offsetMin = new Vector2(16, 6); area.offsetMax = new Vector2(-16, -26);
+        var typed = Txt(area, "", 42, new Color32(0xE0, 0x6C, 0x8C, 255), Vector2.zero, Vector2.zero); Stretch(typed.rectTransform);
+        var hintTxt = Txt(area, "Tap to type your name", 30, new Color(0.42f, 0.29f, 0.23f, 0.45f), Vector2.zero, Vector2.zero); Stretch(hintTxt.rectTransform);
+        hintTxt.fontStyle = FontStyles.Normal;
+        nameField = title.gameObject.AddComponent<TMP_InputField>();
+        nameField.textViewport = area; nameField.textComponent = typed; nameField.placeholder = hintTxt;
+        nameField.characterLimit = 12; nameField.lineType = TMP_InputField.LineType.SingleLine;
+        nameField.onValueChanged.AddListener(v => { if (look != null) look.data.name = CleanName(v); });
 
         // part tabs down the right side
         var panel = Box(root, Cream, new Vector2(300, 140 + cats.Count * 78), new Vector2(1f, 0.5f), new Vector2(-190, 20));
@@ -197,6 +255,11 @@ public class ChibiWardrobeUI : MonoBehaviour
         prev.onClick.AddListener(() => Step(-1));
         var next = Btn(root, ">", Pink, new Vector2(120, 120), new Vector2(0.5f, 0f), new Vector2(-180 + 340, 120), 64);
         next.onClick.AddListener(() => Step(1));
+        foreach (var arrow in new[] { prev, next })                   // the game font has no < > arrows
+        {
+            var at = arrow.GetComponentInChildren<TextMeshProUGUI>();
+            if (at != null && LobbyRulesBoard.Symbols != null) { at.font = LobbyRulesBoard.Symbols; at.fontStyle = FontStyles.Bold; }
+        }
         var hint = Txt(root, "Swipe left / right to try things on", 26, Color.white, new Vector2(-180, 210), new Vector2(700, 40));
         hint.rectTransform.anchorMin = hint.rectTransform.anchorMax = new Vector2(0.5f, 0f);
         hint.outlineWidth = 0.2f; hint.outlineColor = new Color32(0x6B, 0x4A, 0x3A, 255); hint.fontStyle = FontStyles.Normal;

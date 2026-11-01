@@ -81,7 +81,10 @@ public class StickAttack : MonoBehaviour
              WolfAI wolf = enemy.GetComponent<WolfAI>();
             if (wolf != null)
             {
+                bool wasFleeing = wolf.IsFleeing;
                 wolf.GetHit();
+                ScoreKeeper.Add(5, "Bonk!");
+                if (!wasFleeing && wolf.IsFleeing) ScoreKeeper.Add(30, "Wolf scared off!");
             }
         }
     }

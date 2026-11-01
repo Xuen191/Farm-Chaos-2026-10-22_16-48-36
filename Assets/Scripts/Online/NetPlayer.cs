@@ -22,8 +22,8 @@ public class NetPlayer : NetworkBehaviour
 
     [Header("Spy mode")]
     public static int MinPlayersForSpy = 3;
-    public static string SpyGoal = "Secret mission! Keep the farm in CHAOS until sunrise. Overload the power box. Open gates at their switch boxes. Your bait is stinky so it scares animals away. Let go of animals you are leading. Do not get caught!";
-    public static string FarmerGoal = "One of you is a SPY sabotaging the farm! Fix the power, round up the animals - and keep an eye on each other.";
+    public static string SpyGoal = "Keep the farm in CHAOS until sunrise!\nOverload the power box\nOpen gates at their switch boxes\nYour bait is stinky and scares animals away\nLet go of animals you are leading\nDo not get caught!";
+    public static string FarmerGoal = "One of you is a SPY sabotaging the farm!\nFix the power and round up the animals\nKeep an eye on each other";
     /// <summary>Host only: who the spy is this round (ulong.MaxValue = no spy).</summary>
     public static ulong SpyClientId { get; private set; } = ulong.MaxValue;
     /// <summary>On your own device: true if YOU are the spy this round.</summary>
@@ -374,6 +374,34 @@ public class NetPlayer : NetworkBehaviour
         int n = AnimalBrain.ReleaseFollowers(transform, out var kind, out var where);
         if (n > 0) AlertAllRpc(SpySabotage.LooseMessage(kind, n, where));
     }
+
+    // ------------------------------------------------------------ the wolf (host runs it; friends' actions go to the host)
+    /// <summary>Host / solo: the wolf ate an animal - everyone loses 10 coins and sees why.</summary>
+    public static void WolfAte(string kind)
+    {
+        if (NetSession.Online && Local != null && Local.IsSpawned && Local.IsServer) Local.WolfAteRpc(kind);
+        else ApplyWolfAte(kind);
+    }
+    [Rpc(SendTo.Everyone)] void WolfAteRpc(string kind) { ApplyWolfAte(kind); }
+    static void ApplyWolfAte(string kind)
+    {
+        if (CoinWallet.Exists) CoinWallet.Add(-10, "Wolf ate an animal");
+        if (TonightsWeather.Instance != null) TonightsWeather.Instance.Toast($"The wolf ate a {kind.ToLower()}!", 2.5f);
+    }
+
+    public void SendWolfBomb(Vector3 at, float radius) { if (IsOwner && IsSpawned) WolfBombServerRpc(at, radius); }
+    [Rpc(SendTo.Server)] void WolfBombServerRpc(Vector3 at, float radius) { WolfAI.HostBomb(at, radius); }
+
+    public void SendWolfHit() { if (IsOwner && IsSpawned) WolfHitServerRpc(); }
+    [Rpc(SendTo.Server)]
+    void WolfHitServerRpc()
+    {
+        var wolf = WolfAI.ActiveWolf;
+        if (wolf != null && wolf.Hit()) GiveScore(30, "Wolf scared off!");   // points go to the player who landed the last hit
+    }
+
+    public void SendBone(Vector3 at) { if (IsOwner && IsSpawned) BoneServerRpc(at); }
+    [Rpc(SendTo.Server)] void BoneServerRpc(Vector3 at) { WolfAI.BoneAt(at); }
 
 #if UNITY_EDITOR
     /// <summary>Editor testing only: pretend to be the spy in a solo game (F4 in the farm).</summary>

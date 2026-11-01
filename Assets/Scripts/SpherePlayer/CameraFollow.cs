@@ -38,7 +38,18 @@ public class CameraFollow : MonoBehaviour
     float curYaw, curPitch, curDist;     // where it actually is (eased)
     Vector3 focus, focusVel;
 
-    void Start() { Snap(); }
+    /// <summary>Zoom in (+) or out (-) by this many metres (pinch on phones; the mouse wheel is handled below).</summary>
+    public static void AddZoom(float metres) { pendingZoom += metres; }
+    static float pendingZoom;
+    const float ClosestZoom = 2f, FarthestZoom = 14f;      // players can zoom right in, but not far out
+
+    void Start()
+    {
+        minDistance = Mathf.Min(minDistance, ClosestZoom);
+        maxDistance = Mathf.Min(maxDistance, FarthestZoom);
+        pendingZoom = 0f;
+        Snap();
+    }
 
     /// <summary>Jump straight to the right spot (start of scene, respawn, wardrobe closed...).</summary>
     public void Snap()
@@ -81,6 +92,7 @@ public class CameraFollow : MonoBehaviour
 
         float scroll = Input.mouseScrollDelta.y;
         if (Mathf.Abs(scroll) > 0.01f) distance = Mathf.Clamp(distance - scroll * zoomSpeed, minDistance, maxDistance);
+        if (pendingZoom != 0f) { distance = Mathf.Clamp(distance - pendingZoom, minDistance, maxDistance); pendingZoom = 0f; }
 
         // ---- ease the angles (frame-rate independent)
         float k = turnSmoothing <= 0f ? 1f : 1f - Mathf.Exp(-dt / turnSmoothing);

@@ -22,7 +22,7 @@ using UnityEngine;
 public class AnimalBrain : MonoBehaviour
 {
     public enum Kind { Chicken, Bunny, Sheep, Cow }
-    public enum State { Grazing, Escaping, Roaming, Following, Returning, Eating, Hiding }
+    public enum State { Grazing, Escaping, Roaming, Following, Returning, Eating, Hiding, Gone }   // Gone = eaten by the wolf (kept in the list so every player's animals stay matched)
 
     [Header("Who")]
     public Kind kind;
@@ -84,7 +84,7 @@ public class AnimalBrain : MonoBehaviour
         MeasurePen();
         NewWanderTarget();
         lastPos = transform.position;
-        if (gate != null && gate.IsOpen) escapeAt = Time.time + Random.Range(0.2f, 2.5f);
+        if (gate != null && gate.IsOpen) escapeAt = Time.time + Random.Range(5f, 10f);   // a moment of "huh?" before they run
     }
 
     Transform FindDeep(string n) { foreach (var t in GetComponentsInChildren<Transform>(true)) if (t.name == n) return t; return null; }
@@ -92,7 +92,7 @@ public class AnimalBrain : MonoBehaviour
     void OnGateChanged()
     {
         if (gate == null) return;
-        if (gate.IsOpen && state == State.Grazing && Time.time > calmUntil) escapeAt = Time.time + Random.Range(0.2f, 2.5f);
+        if (gate.IsOpen && state == State.Grazing && Time.time > calmUntil) escapeAt = Time.time + Random.Range(5f, 10f);   // a moment of "huh?" before they run
     }
 
     bool gateWasOpen;
@@ -101,6 +101,7 @@ public class AnimalBrain : MonoBehaviour
         float dt = Time.deltaTime;
         bool open = gate != null && gate.IsOpen;
         if (open != gateWasOpen) { gateWasOpen = open; OnGateChanged(); }
+        if (state == State.Gone) { HideGone(); return; }               // eaten: invisible, but still in the list
         if (Puppet) { PuppetUpdate(dt); Animate(dt); return; }      // online, not the host: just follow the host's copy
         if (hopping) { DoHop(dt); Animate(dt); return; }
 
@@ -337,6 +338,11 @@ public class AnimalBrain : MonoBehaviour
         leader = null;
         state = State.Returning;
         target = RandomInside(0.5f);
+        if (!Inside(transform.position, -0.3f) && gate != null)
+        {   // brought to the (closed) gate from outside: hop over it into the pen
+            Vector3 g = gate.transform.position;
+            StartHop(g + Flat(homeCentre - g).normalized * 2.2f);
+        }
         calmUntil = Time.time + 25f; nextLeave = calmUntil;
         if (local && CoinWallet.Exists) CoinWallet.Add(coins, kind + " returned");
         else if (leaderNet != null) leaderNet.GiveAnimalCoins(coins, kind.ToString());   // online: pay the player who brought it home
@@ -569,6 +575,7 @@ public class AnimalBrain : MonoBehaviour
             w.Write((byte)Mathf.Clamp(Mathf.RoundToInt(a.speedNow * 20f), 0, 255));
             w.Write((byte)a.state);
         }
+        WolfAI.PackWolf(w);                                   // the wolf rides along in the same message
         return ((System.IO.MemoryStream)w.BaseStream).ToArray();
     }
 
@@ -590,6 +597,28 @@ public class AnimalBrain : MonoBehaviour
             if (!a.hasNet) { a.transform.position = p; a.transform.rotation = Quaternion.Euler(0f, yaw, 0f); }
             a.netPos = p; a.netYaw = yaw; a.netSpeed = spd; a.state = st; a.hasNet = true;
         }
+        if (r.BaseStream.Position < r.BaseStream.Length) WolfAI.UnpackWolf(r);
+    }
+
+    // ---------------------------------------------------------------- eaten by the wolf (host decides; synced as a state)
+    public bool IsGone => state == State.Gone;
+    bool goneHidden;
+    /// <summary>Host / solo: the wolf got this one. It vanishes for everyone (the state goes out with the next sync).</summary>
+    public void HostEaten()
+    {
+        if (state == State.Gone) return;
+        if (state == State.Following && leader != null)
+            foreach (var a in All) if (a.state == State.Following && a.leader == leader && a.followIndex > followIndex) a.followIndex--;
+        leader = null; leaderNet = null; hopping = false;
+        state = State.Gone;
+        HideGone();
+    }
+    void HideGone()
+    {
+        if (goneHidden) return;
+        goneHidden = true;
+        foreach (var rr in GetComponentsInChildren<Renderer>(true)) rr.enabled = false;
+        foreach (var c in GetComponentsInChildren<Collider>(true)) c.enabled = false;
     }
 
     public void AttractedTo(Vector3 targetPosition)

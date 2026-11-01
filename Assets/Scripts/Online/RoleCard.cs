@@ -27,14 +27,17 @@ public class RoleCard : MonoBehaviour
         Color cardC = spy ? new Color32(0x3A, 0x33, 0x46, 255) : new Color32(0xFF, 0xF0, 0xD9, 255);
         Color titleC = spy ? new Color32(0xF4, 0xB8, 0xC1, 255) : new Color32(0x5E, 0xA8, 0x6E, 255);
         Color textC = spy ? new Color32(0xFF, 0xF0, 0xD9, 255) : new Color32(0x6B, 0x4A, 0x3A, 255);
-        var card = Box(transform, cardC, new Vector2(1100, 520), Vector2.zero);
+        var card = Box(transform, cardC, new Vector2(1100, 680), Vector2.zero);
 
-        Txt(card, spy ? "SHH..." : "ROUND START", 34, titleC, new Vector2(0, 180), FontStyles.Bold);
-        var t = Txt(card, title, 92, titleC, new Vector2(0, 90), FontStyles.Bold);
+        Txt(card, spy ? "SHH..." : "ROUND START", 34, titleC, new Vector2(0, 280), FontStyles.Bold);
+        var t = Txt(card, title, 92, titleC, new Vector2(0, 190), FontStyles.Bold);
         t.outlineWidth = 0.15f; t.outlineColor = spy ? new Color32(0x1B, 0x1D, 0x38, 255) : Color.white;
-        var g = Txt(card, goal, 42, textC, new Vector2(0, -50), FontStyles.Normal);
-        g.textWrappingMode = TextWrappingModes.Normal; g.rectTransform.sizeDelta = new Vector2(980, 200);
-        Txt(card, spy ? "Only you can see this. Tap to hide." : "Tap to start!", 30, new Color(textC.r, textC.g, textC.b, 0.6f), new Vector2(0, -205), FontStyles.Italic);
+        var g = Txt(card, goal, 36, textC, new Vector2(0, -40), FontStyles.Normal);
+        g.textWrappingMode = TextWrappingModes.Normal; g.rectTransform.sizeDelta = new Vector2(980, 330);
+        g.wordSpacing = 30f; g.lineSpacing = 18f; g.characterSpacing = 2f;   // this font's spaces are very narrow
+        g.alignment = TextAlignmentOptions.Center; g.enableAutoSizing = true; g.fontSizeMin = 26; g.fontSizeMax = 36;
+        var hint = Txt(card, spy ? "Only you can see this. Tap to hide." : "Tap to start!", 30, new Color(textC.r, textC.g, textC.b, 0.6f), new Vector2(0, -290), FontStyles.Italic);
+        hint.wordSpacing = 25f; t.wordSpacing = 20f;
         StartCoroutine(Life());
     }
 

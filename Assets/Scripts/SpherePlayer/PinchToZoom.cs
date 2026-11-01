@@ -1,51 +1,25 @@
 using UnityEngine;
 
+// Pinch with two fingers to zoom the camera in / out.
+// Farm Chaos: the zoom goes through CameraFollow (which places the camera every frame - moving the camera here
+// directly got undone straight away). Only counts when BOTH fingers are on the right half of the screen,
+// so holding the joystick and tapping GRAB never zooms by accident. Zoom limits live in CameraFollow.
 public class PinchToZoom : MonoBehaviour
 {
     [Header("Zoom Settings")]
-    public float minDistance = 4f;   
-    public float maxDistance = 15f;   
-    public float zoomSpeed = 0.05f; 
-
-    private Camera cam;
-    private SpherePlayer player;     
-
-    void Start()
-    {
-        cam = GetComponent<Camera>();
-        player = FindAnyObjectByType<SpherePlayer>();
-    }
+    public float minDistance = 4f;     // (kept so the scene's values still load - CameraFollow sets the real limits)
+    public float maxDistance = 15f;
+    public float zoomSpeed = 0.05f;
 
     void Update()
     {
-        if (player == null) return;
+        if (Input.touchCount != 2) return;
+        Touch a = Input.GetTouch(0), b = Input.GetTouch(1);
+        float half = Screen.width * 0.5f;
+        if (a.position.x < half || b.position.x < half) return;      // one finger is on the joystick side
 
-        if (Input.touchCount == 2)
-        {
-            Touch touchZero = Input.GetTouch(0);
-            Touch touchOne = Input.GetTouch(1);
-
-            Vector2 touchZeroPrevPos = touchZero.position - touchZero.deltaPosition;
-            Vector2 touchOnePrevPos = touchOne.position - touchOne.deltaPosition;
-            float prevMagnitude = (touchZeroPrevPos - touchOnePrevPos).magnitude;
-
-            float currentMagnitude = (touchZero.position - touchOne.position).magnitude;
-
-            float difference = currentMagnitude - prevMagnitude;
-
-            ZoomCamera(difference * zoomSpeed);
-        }
-    }
-
-    void ZoomCamera(float increment)
-    {
-        float currentDistance = Vector3.Distance(cam.transform.position, player.transform.position);
-
-        float newDistance = currentDistance - increment;
-
-        newDistance = Mathf.Clamp(newDistance, minDistance, maxDistance);
-
-        Vector3 direction = (cam.transform.position - player.transform.position).normalized;
-        cam.transform.position = player.transform.position + direction * newDistance;
+        float prev = ((a.position - a.deltaPosition) - (b.position - b.deltaPosition)).magnitude;
+        float now = (a.position - b.position).magnitude;
+        CameraFollow.AddZoom((now - prev) * zoomSpeed * 1080f / Mathf.Max(Screen.height, 1));
     }
 }

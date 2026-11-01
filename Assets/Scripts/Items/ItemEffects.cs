@@ -120,10 +120,15 @@ public class ItemEffects : MonoBehaviour
                     pickupScript.itemName = "Meaty Bone"; 
                     if (bone.GetComponent<Collider>() == null) bone.AddComponent<BoxCollider>();
 
-                    WolfAI[] wolves = FindObjectsByType<WolfAI>(FindObjectsSortMode.None);
-                    foreach (var wolf in wolves)
+                    if (NetSession.Online && !Unity.Netcode.NetworkManager.Singleton.IsServer)
+                        WolfAI.BoneAt(bone.transform.position);           // Farm Chaos: online friend -> the host's wolf goes for it
+                    else
                     {
-                        wolf.DistractedByBone(bone.transform);
+                        WolfAI[] wolves = FindObjectsByType<WolfAI>(FindObjectsSortMode.None);
+                        foreach (var wolf in wolves)
+                        {
+                            wolf.DistractedByBone(bone.transform);
+                        }
                     }
                 }
                 
@@ -295,15 +300,7 @@ public class ItemEffects : MonoBehaviour
             rb.AddExplosionForce(bombForce * scale, at, bombRadius, 1.2f, ForceMode.VelocityChange);
         }
 
-        Collider[] hitEnemies = Physics.OverlapSphere(at, bombRadius + 1f);
-        foreach (var enemy in hitEnemies)
-        {
-            WolfAI wolf = enemy.GetComponent<WolfAI>();
-            if (wolf != null)
-            {
-                Destroy(wolf.gameObject); 
-            }
-        }
+        WolfAI.BombAt(at, bombRadius + 1f);   // Farm Chaos: the host blows the wolf away for everyone (it comes back later from the spawner)
 
         StartCoroutine(Poof(at));
     }

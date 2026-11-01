@@ -58,6 +58,7 @@ public class AnimalCounterUI : MonoBehaviour
 
         foreach (var animal in currentAnimals)
         {
+            if (animal.IsGone) continue;   // Farm Chaos: eaten by the wolf (they stay in the scene so online play stays in sync)
             if (!currentCounts.ContainsKey(animal.kind))
                 currentCounts[animal.kind] = 0;
             

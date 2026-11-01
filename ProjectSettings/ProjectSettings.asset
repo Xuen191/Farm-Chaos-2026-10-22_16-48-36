@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: My project
+  productName: Farm Chaos
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -410,7 +410,9 @@ PlayerSettings:
       m_SubKind: App Store
   - m_BuildTarget: Android
     m_Icons:
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 10906, guid: 0000000000000000f000000000000000, type: 0}
+      - {fileID: 2800000, guid: 0835e8fd946e44045ab60a0fe0c82988, type: 3}
       m_Width: 432
       m_Height: 432
       m_Kind: 2

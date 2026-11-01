@@ -7,7 +7,7 @@ public class WolfSpawner : MonoBehaviour
     [Header("Settings")]
     public GameObject wolfObject;      
     public Transform spawnPoint;       
-    public float spawnInterval = 60f;  
+    public float spawnInterval = 180f;  
 
     private bool isServer;
 

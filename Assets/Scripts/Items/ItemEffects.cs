@@ -83,18 +83,21 @@ public class ItemEffects : MonoBehaviour
             case "Chicken Feed":
                 if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
                 ThrowFood(chickenFeedPrefab, p, "Chicken Feed"); 
+                AnimalBait.Drop(BaitSpot(p), "Chicken Feed");     // Farm Chaos: chickens come to eat it
                 message = "Dropped chicken feed!";
                 return true;
 
             case "Pig Slop":
                 if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
                 ThrowFood(pigSlopPrefab, p, "Pig Slop");
+                AnimalBait.Drop(BaitSpot(p), "Pig Slop");         // Farm Chaos: bunnies + cows love it
                 message = "Dropped pig slop!";
                 return true;
 
             case "Fresh Hay":
                 if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
                 ThrowFood(freshHayPrefab, p, "Fresh Hay");
+                AnimalBait.Drop(BaitSpot(p), "Fresh Hay");        // Farm Chaos: sheep + cows love it
                 message = "Dropped fresh hay!";
                 return true;
 
@@ -114,6 +117,7 @@ public class ItemEffects : MonoBehaviour
                 nextWhistleTime = Time.time + whistleCooldown;
                 
                 if (whistleSound != null) AudioSource.PlayClipAtPoint(whistleSound, p.transform.position);
+                AnimalBait.Drop(p.transform.position, "Magic Whistle");   // Farm Chaos: animals nearby trot over
 
                 Collider[] animals = Physics.OverlapSphere(p.transform.position, whistleRadius, LayerMask.GetMask("Animal"));
                 
@@ -148,7 +152,7 @@ public class ItemEffects : MonoBehaviour
                     
                     if (success)
                     {
-                        message = "Tied the spy!"; 
+                        message = "Tied them up!"; 
                         return true;
                     }
                     else
@@ -259,6 +263,14 @@ public class ItemEffects : MonoBehaviour
         }
         Destroy(flash.gameObject);
         if (puff != null) Destroy(puff);
+    }
+
+    // where thrown food lands (roughly): a couple of steps in front of you
+    Vector3 BaitSpot(SpherePlayer p)
+    {
+        var cam = Camera.main;
+        Vector3 fwd = cam != null ? Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized : p.transform.forward;
+        return p.transform.position + fwd * 2f;
     }
 
     private void ThrowFood(GameObject prefab, SpherePlayer p, string itemName)

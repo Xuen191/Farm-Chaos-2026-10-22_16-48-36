@@ -165,6 +165,9 @@ public class WolfAI : MonoBehaviour
     }
 
     // 💡 這個函數會由 StickAttack 呼叫
+    /// <summary>Farm Chaos: true while it's running away (scared off).</summary>
+    public bool IsFleeing => currentState == State.Fleeing;
+
     public void GetHit()
     {
         hitCount++;

@@ -45,7 +45,6 @@ public class FarmFlyover : MonoBehaviour
     {
         cam = Camera.main;
         if (cam == null) { Finish(); return; }
-        Add("DOG KENNEL", new Vector3(-35f, 0f, 35f), "Dog_Kennel", "Kennel_Grove");
         Add("CHICKENS", new Vector3(-28f, 0f, 10f), "Chicken_Pen", "Chicken_Coops");
         Add("BUNNIES", new Vector3(-25f, 0f, -28f), "Rabbit_Pen");
         Add("POWER STATION", new Vector3(0f, 0f, -14f), "PowerStation_Building");

@@ -248,6 +248,7 @@ public class WirePuzzle : MonoBehaviour
         if (powerBox != null) 
         {
             powerBox.TurnOnPower();
+            ScoreKeeper.Add(50, "Power fixed!");
         }
     }
 

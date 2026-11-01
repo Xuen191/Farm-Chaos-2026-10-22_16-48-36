@@ -189,10 +189,16 @@ public class IntroCutscene3D : MonoBehaviour
             {
                 string json = np.IsOwner ? JsonUtility.ToJson(ChibiLook.LoadSaved()) : np.LookJson;
                 if (string.IsNullOrEmpty(json)) json = JsonUtility.ToJson(new ChibiLook.Data { outfit = np.Number - 1 });
-                list.Add(new Who { name = np.IsOwner ? "YOU" : "PLAYER " + np.Number, json = json, you = np.IsOwner });
+                string typed = string.IsNullOrEmpty(np.DisplayName) ? "" : np.DisplayName.ToUpperInvariant();
+                if (np.IsOwner) { var mine = ChibiLook.LoadSaved(); typed = string.IsNullOrEmpty(mine.name) ? "" : mine.name.ToUpperInvariant(); }
+                list.Add(new Who { name = typed != "" ? typed : (np.IsOwner ? "YOU" : "PLAYER " + np.Number), json = json, you = np.IsOwner });
             }
         }
-        if (list.Count == 0) list.Add(new Who { name = "YOU", json = JsonUtility.ToJson(ChibiLook.LoadSaved()), you = true });
+        if (list.Count == 0)
+        {
+            var mine = ChibiLook.LoadSaved();
+            list.Add(new Who { name = string.IsNullOrEmpty(mine.name) ? "YOU" : mine.name.ToUpperInvariant(), json = JsonUtility.ToJson(mine), you = true });
+        }
         return list.Take(5).ToList();
     }
 

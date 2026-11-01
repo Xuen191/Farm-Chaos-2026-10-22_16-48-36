@@ -98,6 +98,7 @@ public class TonightsWeather : MonoBehaviour
     public static (int kind, int seed) RollForIntro()
     {
         int s = UnityEngine.Random.Range(1, int.MaxValue);
+        if (PartySettings.Weather != 0) return (0, s);   // host's rule: always clear / weather off
         int[] odds = { 25, 20, 18, 12, 15, 10 };   // clear, rain, fog, thunder, windy, quake
         int total = 0; foreach (var o in odds) total += o;
         int r = UnityEngine.Random.Range(0, total);
@@ -134,6 +135,7 @@ public class TonightsWeather : MonoBehaviour
         int s = UnityEngine.Random.Range(1, int.MaxValue);
         var w = Instance != null ? Instance : FindAnyObjectByType<TonightsWeather>();
         if (w != null && w.forceWeather) return ((int)w.forced, s);
+        if (PartySettings.Weather != 0) { PresetKind = -1; return (0, s); }   // host's rule: always clear / weather off
         if (HasPreset) { var p = (PresetKind, presetSeed); PresetKind = -1; return p; }   // rolled in the lobby for the intro
         if (w == null) return (0, s);
         int[] odds = { w.clearChance, w.rainChance, w.fogChance, w.thunderChance, w.windChance, w.quakeChance };
@@ -158,7 +160,8 @@ public class TonightsWeather : MonoBehaviour
         Decided?.Invoke(kind);
         StopAllCoroutines();
         FromIntro = false;
-        StartCoroutine(RollWhenReady());   // the spinning weather card (after the map fly-over, if there is one)
+        if (PartySettings.Weather == 0) StartCoroutine(RollWhenReady());   // the spinning weather card (after the map fly-over, if there is one)
+        else StartCoroutine(NoCard());                                      // host turned the weather roll off
     }
 
     void StartEffects()
@@ -224,7 +227,7 @@ public class TonightsWeather : MonoBehaviour
                 break;
             case Kind.Windy:
                 float gust = 0.55f + 0.75f * Mathf.PerlinNoise(Time.time * 0.25f, seed % 1000 * 0.01f);
-                SpherePlayer.Wind = windDir * windStrength * gust;
+                SpherePlayer.Wind = windDir * windStrength * gust * 0.65f;   // toned down: the wind was pushing players around too much
                 if (wind != null)
                 {
                     var main = wind.main; main.startSpeed = 9f + 9f * gust;
@@ -448,6 +451,15 @@ public class TonightsWeather : MonoBehaviour
         Destroy(rootGo);
         Showing = false;
         if (Current == Kind.Clear) Toast("A calm night... for now.", 2.5f);
+    }
+
+    // "Always clear" / "Off" on the lobby board: no spinning card, just a calm night
+    IEnumerator NoCard()
+    {
+        while (FarmFlyover.Active) yield return null;
+        StartEffects();
+        Showing = false;
+        if (PartySettings.Weather == 1) Toast("A calm, clear night", 2.5f);
     }
 
     IEnumerator RollWhenReady()

@@ -64,7 +64,7 @@ public class NetSession : MonoBehaviour
         try
         {
             if (!await SignIn()) return false;
-            var options = new SessionOptions { MaxPlayers = Mathf.Clamp(maxPlayers, 1, 5), IsPrivate = true }.WithRelayNetwork();
+            var options = new SessionOptions { MaxPlayers = Mathf.Clamp(maxPlayers, 1, PartySettings.MaxPartySize), IsPrivate = true }.WithRelayNetwork();
             Session = await MultiplayerService.Instance.CreateSessionAsync(options);
             Debug.Log($"[Farm Chaos] Hosting party {Session.Code} for up to {Session.MaxPlayers} players.");
             return true;

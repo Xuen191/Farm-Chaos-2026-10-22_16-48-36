@@ -43,9 +43,11 @@ public class GateSwitch : Interactable
         bool power = ElectricGate.PowerOn;
         bool open = gate != null && gate.IsOpen;
 
+        // farmers can only SHUT gates; only the spy can (secretly) open one
         hintMessage = !power ? $"No power! Fix the power box to work the {penName} gate."
                     : open ? $"Tap USE to close the {penName} gate"
-                           : $"Tap USE to open the {penName} gate";
+                    : NetPlayer.IAmSpy ? (SpySabotage.GateCooldownLeft > 0f ? $"Wait {Mathf.CeilToInt(SpySabotage.GateCooldownLeft)}s to open another gate" : $"Tap USE to sneakily open the {penName} gate")
+                           : $"The {penName} gate is shut and powered";
 
         if (lamp != null)
         {
@@ -95,6 +97,14 @@ public class GateSwitch : Interactable
     public override void Interact()
     {
         if (gate == null || !ElectricGate.PowerOn) return;
+        if (!gate.IsOpen)
+        {   // opening is spy-only sabotage
+            if (!NetPlayer.IAmSpy || SpySabotage.GateCooldownLeft > 0f) return;
+            SpySabotage.UsedGate();
+            ScoreKeeper.Add(30, "Gate opened!");
+            NetPlayer.Alert($"The {penName.ToUpper()} gate was opened!");
+        }
+        else ScoreKeeper.Add(5, "Gate shut!");
         gate.Toggle();
         Toggled?.Invoke(gate.name, gate.IsOpen);
     }

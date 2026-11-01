@@ -59,6 +59,8 @@ public class SpherePlayer : MonoBehaviour
         // touch joystick (phone) or mouse-drag joystick (editor)
         Vector2 stick = MobileJoystick.Value;
         moveInput = Vector2.ClampMagnitude(kb + stick, 1f);
+        // Farm Chaos: hold Shift to SNEAK (slow + quiet - animals don't run from you). On a phone, tilt the stick just a little.
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) moveInput *= 0.35f;
 
         // shop / wiring puzzle open, or knocked over -> stand still
         if (ProximityInteractor.UIOpen || Stunned) { moveInput = Vector2.zero; MobileJoystick.ConsumeJump(); return; }
@@ -101,9 +103,9 @@ public class SpherePlayer : MonoBehaviour
         float speed = moveSpeed;
         if (Wind.sqrMagnitude > 0.01f && dir.sqrMagnitude > 0.01f)
         {
-            // into the wind: down to ~35% speed; side wind: ~75%; with the wind: a bit faster
+            // into the wind: down to ~60% speed; side wind: ~85%; with the wind: a bit faster (softened)
             float into = Vector3.Dot(dir.normalized, -Wind.normalized);
-            speed *= into > 0f ? Mathf.Lerp(0.75f, 0.35f, into) : Mathf.Lerp(0.75f, 1.05f, -into);
+            speed *= into > 0f ? Mathf.Lerp(0.85f, 0.6f, into) : Mathf.Lerp(0.85f, 1.05f, -into);
         }
         Vector3 target = dir * speed + Wind * 0.4f;       // the wind also carries you along
 

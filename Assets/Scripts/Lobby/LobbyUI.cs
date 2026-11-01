@@ -4,6 +4,7 @@
 //   -> everyone plays the intro together -> the host loads the farm for the whole party.
 // If going online fails (no internet / not signed in) it quietly falls back to playing solo offline.
 using System.Collections;
+using System.Linq;
 using TMPro;
 using Unity.Netcode;
 using UnityEngine;
@@ -61,6 +62,7 @@ public class LobbyUI : MonoBehaviour
         if (codeInput != null) codeInput.characterLimit = 10;   // online codes can be longer than 5
         if (codeText != null) { codeText.enableAutoSizing = true; codeText.fontSizeMin = 24; codeText.fontSizeMax = codeText.fontSize; }
 
+        AddSixthSizeButton();
         for (int i = 0; i < sizeButtons.Length; i++)
         {
             int n = i + 1;
@@ -71,10 +73,41 @@ public class LobbyUI : MonoBehaviour
         if (openJoinButton != null) openJoinButton.onClick.AddListener(() => { joinPanel.SetActive(true); if (joinMessage != null) joinMessage.text = ""; });
         if (closeJoinButton != null) closeJoinButton.onClick.AddListener(() => joinPanel.SetActive(false));
         if (joinButton != null) joinButton.onClick.AddListener(Join);
+        SetUpCircles();
+    }
+
+    // one party circle for everything: the host rolls in to host / start, friends roll in to say "ready"
+    void SetUpCircles()
+    {
+        var circles = FindObjectsByType<PartyCircle>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        if (circles.Length == 0) return;
+        var party = circles.FirstOrDefault(c => c.circleNumber == 2) ?? circles[0];
+        foreach (var c in circles) if (c != party) c.gameObject.SetActive(false);
+        party.circleNumber = 1;
+        party.gameObject.name = "Party_Circle";
+        party.transform.position = new Vector3(0f, party.transform.position.y, -1f);   // right in the middle of the plaza
+
+        party.Resize(3.0f, 1.75f);                                                    // nearly fills the round plaza
+
+        // the host's farm rules board (left of the plaza)
+        var ring = party.ring != null ? party.ring.sharedMaterial : null;
+        Material lit = ring != null && ring.shader.name.Contains("Lit") ? ring : null;
+        Sprite rounded = partyPanel != null && partyPanel.GetComponent<Image>() != null ? partyPanel.GetComponent<Image>().sprite : null;
+        var canvas = GetComponentInParent<Canvas>();
+        LobbyRulesBoard.Make(canvas != null ? canvas.transform : transform, rounded, lit);
+
+        // paper money shop (farmhouse door), decoration spots, and the lobby animals + practice pen
+        LobbyKit.Rounded = rounded;
+        var ui = canvas != null ? canvas.transform : transform;
+        LobbyShop.Make(ui);
+        LobbyDeco.Make(ui);
+        var intro = GetComponent<IntroCutscene3D>();
+        LobbyCritters.Make(intro != null ? intro.chickenPrefab : null, intro != null ? intro.bunnyPrefab : null);
     }
 
     SpherePlayer player;
     float refreshTimer;
+    bool wasTyping;
 
     void Update()
     {
@@ -82,8 +115,8 @@ public class LobbyUI : MonoBehaviour
         if (player == null) player = FindAnyObjectByType<SpherePlayer>();
         if (player != null)
         {
-            bool typing = codeInput != null && codeInput.isFocused;
-            if (player.enabled == typing) player.enabled = !typing;
+            bool typing = ChibiMotor.Typing();
+            if (typing != wasTyping) { wasTyping = typing; player.enabled = !typing; }
         }
 
         // keep the player count / banner fresh while in an online party
@@ -125,13 +158,16 @@ public class LobbyUI : MonoBehaviour
     {
         if (current == null) return;
         bool online = Net != null && Net.InSession;
-        if (partyTitle != null) partyTitle.text = $"Circle {current.circleNumber}";
+        if (partyTitle != null) partyTitle.text = "Your Party";
+        int readyN = 0, friendsN = 0;
+        bool allReady = !online || NetPlayer.AllFriendsReady(out readyN, out friendsN);
         if (codeText != null) codeText.text = online ? Net.Code : (Net != null ? "- - -" : current.Code);
         if (partyStatus != null)
         {
             if (Net != null && Net.Busy) partyStatus.text = "Connecting...";
             else if (online) partyStatus.text = Net.IsHost
-                ? $"{Net.PlayerCount}/{Net.MaxPlayers} players  ·  share the code with friends!"
+                ? (friendsN == 0 ? $"{Net.PlayerCount}/{Net.MaxPlayers} players  ·  share the code with friends!"
+                                 : $"{Net.PlayerCount}/{Net.MaxPlayers} players  ·  {readyN}/{friendsN} friends in the circle")
                 : $"{Net.PlayerCount}/{Net.MaxPlayers} players  ·  waiting for the host to start";
             else if (Net != null && !string.IsNullOrEmpty(Net.LastError)) partyStatus.text = "Offline: " + Net.LastError;
             else partyStatus.text = Net != null ? "Press HOST to open your party" : $"{current.Members}/{current.maxPlayers} players";
@@ -144,8 +180,8 @@ public class LobbyUI : MonoBehaviour
         {
             bool showStart = !online || Net.IsHost;
             startButton.gameObject.SetActive(showStart);
-            startButton.interactable = Net == null || !Net.Busy;
-            if (startLabel != null) startLabel.text = Net == null ? "START" : online ? "START" : "HOST";
+            startButton.interactable = (Net == null || !Net.Busy) && (!online || !Net.IsHost || allReady);
+            if (startLabel != null) startLabel.text = Net == null ? "START" : online ? (allReady ? "START" : "WAITING...") : "HOST";
         }
     }
 
@@ -153,7 +189,7 @@ public class LobbyUI : MonoBehaviour
     {
         if (hintBanner == null || current != null) return;
         hintBanner.text = Net != null && Net.InSession
-            ? (Net.IsHost ? $"Your party <b>{Net.Code}</b> · {Net.PlayerCount}/{Net.MaxPlayers} · roll into a circle to start"
+            ? (Net.IsHost ? $"Your party <b>{Net.Code}</b> · {Net.PlayerCount}/{Net.MaxPlayers} · roll into the party circle to start"
                           : $"In party <b>{Net.Code}</b> · {Net.PlayerCount}/{Net.MaxPlayers} · waiting for the host")
             : defaultHint;
     }
@@ -213,8 +249,8 @@ public class LobbyUI : MonoBehaviour
             }
             return;
         }
-        // second press (host): everyone into the intro, then the farm
-        if (Net.IsHost && NetPlayer.Local != null) NetPlayer.Local.BeginGame();
+        // second press (host): everyone into the intro, then the farm - once every friend is on the ready pad
+        if (Net.IsHost && NetPlayer.Local != null && NetPlayer.AllFriendsReady(out _, out _)) NetPlayer.Local.BeginGame();
     }
 
     /// <summary>Called on every player when the host presses START in an online party.</summary>
@@ -262,11 +298,38 @@ public class LobbyUI : MonoBehaviour
     /// <summary>Testing (F9 in the editor): play the story intro solo and go to the farm, no circle needed.</summary>
     public void TestStart() { if (!starting && (Net == null || !Net.InSession)) StartCoroutine(StartRoutine()); }
 
+    // parties go up to 6 now: the scene has buttons 1-5, so copy the "5" button into a "6" next to it
+    void AddSixthSizeButton()
+    {
+        if (sizeButtons == null || sizeButtons.Length != 5 || sizeButtons[4] == null || sizeButtons[3] == null) return;
+        var five = (RectTransform)sizeButtons[4].transform;
+        var six = Instantiate(five.gameObject, five.parent);
+        six.name = "Size_6";
+        var b = six.GetComponent<Button>(); b.onClick.RemoveAllListeners();
+        foreach (var t in six.GetComponentsInChildren<TMP_Text>(true)) if (t.text.Trim() == "5") t.text = "6";
+        var list = new System.Collections.Generic.List<Button>(sizeButtons) { b };
+        sizeButtons = list.ToArray();
+        // squeeze all 6 into the space the 5 used to take, so none sticks out of the panel
+        var first = (RectTransform)sizeButtons[0].transform;
+        float size = first.sizeDelta.x;
+        float left = first.anchoredPosition.x - size * 0.5f, right = five.anchoredPosition.x + size * 0.5f;
+        float newSize = Mathf.Min(size, (right - left) / 6f - 6f);
+        float step = (right - left - newSize) / 5f;
+        for (int i = 0; i < 6; i++)
+        {
+            var r = (RectTransform)sizeButtons[i].transform;
+            r.sizeDelta = new Vector2(newSize, newSize);
+            r.anchoredPosition = new Vector2(left + newSize * 0.5f + step * i, r.anchoredPosition.y);
+            foreach (var t in r.GetComponentsInChildren<TMP_Text>(true)) { var tr = t.rectTransform; if (tr.anchorMin == tr.anchorMax) tr.sizeDelta = new Vector2(newSize, newSize); }
+        }
+    }
+
     // offline / solo
     IEnumerator StartRoutine()
     {
         starting = true;
         PartySettings.MaxPlayers = current != null ? current.maxPlayers : 1;
+        PartySettings.Players = 1;
         PartySettings.JoinCode = current != null ? current.Code : "";
         PartySettings.CircleNumber = current != null ? current.circleNumber : 1;
         if (partyPanel != null) partyPanel.SetActive(false);

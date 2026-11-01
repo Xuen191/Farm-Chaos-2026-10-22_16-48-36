@@ -2,8 +2,12 @@
 // LEFT half of the screen: touch & drag to move (joystick appears under your thumb).
 // RIGHT half: tap the pink button to jump, drag anywhere else to turn the camera.
 // In the editor the mouse acts as a finger; right-mouse drag also turns the camera.
+// SNEAKING on a phone: keep your thumb inside the small inner circle -> the knob turns green and you creep
+// slowly (same as holding Shift on a keyboard). Push past the circle to run.
 // Reads input directly, so no EventSystem is needed.
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MobileJoystick : MonoBehaviour
 {
@@ -17,6 +21,11 @@ public class MobileJoystick : MonoBehaviour
 
     /// <summary>Joystick direction, -1..1 on each axis.</summary>
     public static Vector2 Value { get; private set; }
+    /// <summary>True while the thumb is inside the inner sneak circle.</summary>
+    public static bool Sneaking { get; private set; }
+    const float SneakZone = 0.55f;     // inner part of the stick (0..1)
+    const float SneakPush = 0.32f;     // how hard you move while sneaking (Shift on a keyboard is 0.35)
+    Image handleImg, sneakRing; Color handleColour = Color.white; TextMeshProUGUI sneakLabel;
     /// <summary>Camera look drag this frame, in screen pixels.</summary>
     public static Vector2 LookDelta { get; private set; }
     static bool jumpFlag;
@@ -31,7 +40,7 @@ public class MobileJoystick : MonoBehaviour
     float jumpFlash;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { Value = Vector2.zero; LookDelta = Vector2.zero; jumpFlag = false; }
+    static void ResetStatics() { Value = Vector2.zero; LookDelta = Vector2.zero; jumpFlag = false; Sneaking = false; }
 
     void Awake()
     {
@@ -48,6 +57,41 @@ public class MobileJoystick : MonoBehaviour
         Canvas.ForceUpdateCanvases();
         restPos = new Vector2(-canvasRect.rect.width / 2f + 260f, -canvasRect.rect.height / 2f + 240f);
         if (background != null) background.anchoredPosition = restPos;
+        BuildSneakRing();
+    }
+
+    // a faint inner circle on the stick showing where sneaking starts, plus a little SNEAK label
+    void BuildSneakRing()
+    {
+        if (background == null || handle == null) return;
+        handleImg = handle.GetComponent<Image>();
+        if (handleImg != null) handleColour = handleImg.color;
+        var bgImg = background.GetComponent<Image>();
+        var ring = new GameObject("Sneak_Ring", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+        ring.SetParent(background, false); ring.SetSiblingIndex(0);
+        ring.anchorMin = ring.anchorMax = ring.pivot = new Vector2(0.5f, 0.5f);
+        float d = radius * SneakZone * 2f + handle.rect.width * 0.5f;
+        ring.sizeDelta = new Vector2(d, d);
+        sneakRing = ring.GetComponent<Image>();
+        if (bgImg != null) { sneakRing.sprite = bgImg.sprite; sneakRing.type = bgImg.type; }
+        sneakRing.color = new Color(0.55f, 0.85f, 0.62f, 0.25f); sneakRing.raycastTarget = false;
+
+        sneakLabel = new GameObject("Sneak_Label", typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
+        sneakLabel.transform.SetParent(background, false);
+        sneakLabel.rectTransform.anchoredPosition = new Vector2(0f, background.rect.height * 0.5f + 28f);
+        sneakLabel.rectTransform.sizeDelta = new Vector2(220f, 44f);
+        sneakLabel.text = "SNEAKING"; sneakLabel.fontSize = 30; sneakLabel.fontStyle = FontStyles.Bold;
+        sneakLabel.alignment = TextAlignmentOptions.Center; sneakLabel.color = new Color32(0x8C, 0xE0, 0xA4, 255);
+        sneakLabel.outlineWidth = 0.2f; sneakLabel.outlineColor = new Color32(0x2E, 0x4A, 0x36, 255);
+        sneakLabel.raycastTarget = false; sneakLabel.enabled = false;
+    }
+
+    void ShowSneak(bool on)
+    {
+        Sneaking = on;
+        if (handleImg != null) handleImg.color = on ? new Color32(0x8C, 0xE0, 0xA4, 255) : handleColour;
+        if (sneakRing != null) sneakRing.color = new Color(0.55f, 0.85f, 0.62f, on ? 0.5f : 0.25f);
+        if (sneakLabel != null) sneakLabel.enabled = on;
     }
 
     void OnDisable() { Value = Vector2.zero; LookDelta = Vector2.zero; }
@@ -177,12 +221,14 @@ public class MobileJoystick : MonoBehaviour
         Vector2 clamped = Vector2.ClampMagnitude(delta, radius);
         if (handle != null) handle.anchoredPosition = clamped;
         Vector2 v = clamped / radius;
-        Value = v.magnitude < 0.12f ? Vector2.zero : v;   // small dead zone
+        if (v.magnitude < 0.12f) { Value = Vector2.zero; ShowSneak(false); }           // small dead zone
+        else if (v.magnitude < SneakZone) { Value = v.normalized * SneakPush; ShowSneak(true); }   // inner circle: sneak
+        else { Value = v; ShowSneak(false); }                                           // outer part: run
     }
 
     void End()
     {
-        Value = Vector2.zero;
+        Value = Vector2.zero; ShowSneak(false);
         if (handle != null) handle.anchoredPosition = Vector2.zero;
         if (background != null) background.anchoredPosition = restPos;
     }

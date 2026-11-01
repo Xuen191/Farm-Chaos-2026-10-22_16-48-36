@@ -21,6 +21,10 @@ public class ChibiMotor : MonoBehaviour
     public bool listenForEmoteKeys = true;
     /// <summary>Wardrobe mode: stand still and turn to face the camera.</summary>
     [System.NonSerialized] public bool posing;
+    /// <summary>While posing: face this way (e.g. toward the changing-room mirror) instead of the camera.</summary>
+    [System.NonSerialized] public Vector3 faceDir;
+    /// <summary>Your own bean waved (false) or cheered (true) - online, NetPlayer shows it to everyone.</summary>
+    public static event System.Action<bool> LocalEmote;
 
     Transform ball;
     SpherePlayer player;     // set for your own ball
@@ -56,7 +60,7 @@ public class ChibiMotor : MonoBehaviour
         if (np != null && look != null)
         {
             if (np.HasLook) np.ReapplyLook();                                 // already know their look
-            else { look.data.outfit = (int)(np.OwnerClientId % 5); look.Apply(); }   // until their look arrives: party colour
+            else { look.data.outfit = (int)(np.OwnerClientId % 6); look.Apply(); }   // until their look arrives: party colour
         }
         listenForEmoteKeys &= player != null;
     }
@@ -89,7 +93,9 @@ public class ChibiMotor : MonoBehaviour
         {
             speed = 0f; smoothSpeed = Mathf.Lerp(smoothSpeed, 0f, 1f - Mathf.Exp(-10f * dt));
             var cam = Camera.main;
-            if (cam != null)
+            if (faceDir.sqrMagnitude > 0.01f)
+                yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(faceDir.x, faceDir.z) * Mathf.Rad2Deg - yawOffset, turnSpeed * dt);
+            else if (cam != null)
             {
                 Vector3 to = cam.transform.position - ball.position; to.y = 0f;
                 if (to.sqrMagnitude > 0.001f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg - yawOffset, turnSpeed * dt);
@@ -116,7 +122,7 @@ public class ChibiMotor : MonoBehaviour
         }
         wasGrounded = grounded;
 
-        if (listenForEmoteKeys && !ProximityInteractor.UIOpen)
+        if (listenForEmoteKeys && !ProximityInteractor.UIOpen && !posing && !Typing())
         {
             bool wave = false, cheer = false;
 #if ENABLE_INPUT_SYSTEM
@@ -136,6 +142,7 @@ public class ChibiMotor : MonoBehaviour
 
     void Update()
     {
+        BubbleUpdate();
         if (hopT < 0f || animator == null) return;
         hopT += Time.deltaTime * 4f;
         float k = Mathf.Sin(Mathf.Clamp01(hopT) * Mathf.PI);
@@ -164,5 +171,44 @@ public class ChibiMotor : MonoBehaviour
     {
         if (animator != null) animator.SetTrigger(cheer ? CheerId : WaveId);
         if (look != null) look.SetExpression(cheer ? ChibiLook.Face.Love : ChibiLook.Face.Wink, 1.6f);
+        Bubble(cheer ? "YAY!" : "HI!");
+        if (player != null) LocalEmote?.Invoke(cheer);     // mine -> tell everyone
+    }
+
+    /// <summary>True while typing in a text box (name, join code) - so V / C don't fire emotes.</summary>
+    public static bool Typing()
+    {
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        var go = es != null ? es.currentSelectedGameObject : null;
+        var f = go != null ? go.GetComponent<TMPro.TMP_InputField>() : null;
+        return f != null && f.isFocused;
+    }
+
+    // a little speech bubble over the head ("HI!" / "YAY!") that pops up and floats away
+    TMPro.TextMeshPro bubble; float bubbleT = -1f;
+    void Bubble(string text)
+    {
+        if (bubble == null)
+        {
+            bubble = new GameObject("Emote_Bubble").AddComponent<TMPro.TextMeshPro>();
+            bubble.transform.SetParent(transform, false);
+            bubble.fontSize = 5f; bubble.fontStyle = TMPro.FontStyles.Bold; bubble.alignment = TMPro.TextAlignmentOptions.Center;
+            bubble.textWrappingMode = TMPro.TextWrappingModes.NoWrap; bubble.rectTransform.sizeDelta = new Vector2(4f, 1.2f);
+            bubble.color = Color.white; bubble.outlineWidth = 0.25f; bubble.outlineColor = new Color32(0xE0, 0x6C, 0x8C, 255);
+        }
+        bubble.text = text; bubbleT = 0f; bubble.gameObject.SetActive(true);
+    }
+
+    void BubbleUpdate()
+    {
+        if (bubble == null || bubbleT < 0f) return;
+        bubbleT += Time.deltaTime;
+        float pop = Mathf.Clamp01(bubbleT / 0.15f), fade = 1f - Mathf.Clamp01((bubbleT - 1.2f) / 0.4f);
+        bubble.transform.localPosition = Vector3.up * (1.75f + bubbleT * 0.15f);
+        bubble.transform.localScale = Vector3.one * (pop * (1f + 0.15f * Mathf.Sin(pop * Mathf.PI)));
+        bubble.alpha = fade;
+        var cam = Camera.main;
+        if (cam != null) bubble.transform.rotation = Quaternion.LookRotation(bubble.transform.position - cam.transform.position);
+        if (fade <= 0f) { bubbleT = -1f; bubble.gameObject.SetActive(false); }
     }
 }

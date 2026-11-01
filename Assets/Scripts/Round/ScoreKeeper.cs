@@ -144,8 +144,9 @@ public class ScoreHUD : MonoBehaviour
 
         root = new GameObject("Score_Pill", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
         root.SetParent(canvasGo.transform, false);
-        root.anchorMin = root.anchorMax = root.pivot = new Vector2(0f, 1f);
-        root.anchoredPosition = new Vector2(30, -30); root.sizeDelta = new Vector2(300, 74);
+        // top-right, just under the coin counter (the top-left belongs to the animal counter)
+        root.anchorMin = root.anchorMax = root.pivot = new Vector2(1f, 1f);
+        root.anchoredPosition = new Vector2(-30, -122); root.sizeDelta = new Vector2(300, 74);
         root.GetComponent<Image>().color = new Color(1f, 0.96f, 0.92f, 0.92f);
         scoreText = new GameObject("Score_Text", typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
         scoreText.transform.SetParent(root, false);
@@ -166,10 +167,10 @@ public class ScoreHUD : MonoBehaviour
         Refresh(); bump = 1f;
         var t = new GameObject("Pop", typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
         t.transform.SetParent(root.parent, false);
-        var r = t.rectTransform; r.anchorMin = r.anchorMax = r.pivot = new Vector2(0f, 1f); r.sizeDelta = new Vector2(700, 50);
-        r.anchoredPosition = new Vector2(40, -112);
+        var r = t.rectTransform; r.anchorMin = r.anchorMax = r.pivot = new Vector2(1f, 1f); r.sizeDelta = new Vector2(700, 50);
+        r.anchoredPosition = new Vector2(-40, -206);
         t.text = (pts > 0 ? "+" : "") + pts + "  " + reason;
-        t.fontSize = 34; t.fontStyle = FontStyles.Bold; t.alignment = TextAlignmentOptions.Left;
+        t.fontSize = 34; t.fontStyle = FontStyles.Bold; t.alignment = TextAlignmentOptions.Right;
         t.color = pts > 0 ? new Color32(0x3F, 0xAF, 0x5A, 255) : new Color32(0xE0, 0x4C, 0x5C, 255);
         t.outlineWidth = 0.2f; t.outlineColor = Color.white;
         pops.Add((r, t, 0f));
@@ -184,7 +185,7 @@ public class ScoreHUD : MonoBehaviour
             var (r, t, age) = pops[i];
             age += Time.unscaledDeltaTime;
             if (r == null) { pops.RemoveAt(i); continue; }
-            r.anchoredPosition = new Vector2(40, -112 - (pops.Count - 1 - i) * 0f - age * 40f);
+            r.anchoredPosition = new Vector2(-40, -206 - age * 40f);
             t.alpha = 1f - Mathf.Clamp01((age - 1.6f) / 0.6f);
             if (age > 2.2f) { Destroy(r.gameObject); pops.RemoveAt(i); continue; }
             pops[i] = (r, t, age);

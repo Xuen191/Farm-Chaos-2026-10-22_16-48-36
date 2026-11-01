@@ -9,6 +9,9 @@ public class PowerBox : Interactable
     public bool hasFuse = false; 
     public bool wiresCorrect = false;
     public bool powerOn = false;
+    [Tooltip("Farm Chaos: the power dropped after it was fixed - press E to reset the breaker (no puzzle)")]
+    public bool tripped = false;
+    bool resetting;
 
     [Header("References")]
     public GateController farmGate;
@@ -31,6 +34,28 @@ public class PowerBox : Interactable
         
         farmLight = FindObjectOfType<FarmLightController>();
         if (farmLight != null) farmLight.TurnOffLight();
+        ElectricGate.PowerChanged += OnGridPower;
+    }
+
+    void OnDestroy() { ElectricGate.PowerChanged -= OnGridPower; }
+
+    // Farm Chaos: the power can drop again later (unstable grid, lightning, spy) -> breaker trips
+    void OnGridPower(bool on)
+    {
+        if (on || !wiresCorrect || !powerOn) return;
+        powerOn = false; tripped = true;
+        if (farmLight != null) farmLight.TurnOffLight();
+        if (statusText != null) statusText.text = "POWER OUT";
+    }
+
+    System.Collections.IEnumerator ResetBreaker()
+    {
+        resetting = true;
+        if (audioSource != null && switchClickSound != null) audioSource.PlayOneShot(switchClickSound);
+        if (statusText != null) statusText.text = "Resetting...";
+        yield return new WaitForSeconds(1.2f);
+        resetting = false; tripped = false;
+        TurnOnPower();
     }
 
     void Update()
@@ -42,7 +67,9 @@ public class PowerBox : Interactable
         }
         else
         {
-            hintMessage = powerOn ? "Power is ON" : "Press E to open power box";
+            if (tripped) hintMessage = resetting ? "Resetting the breaker..." : "Power's out! Press E to reset the breaker";
+            else if (powerOn && NetPlayer.IAmSpy) hintMessage = PowerGrid.SpyCooldownLeft > 0f ? "Power is ON" : "Press E to secretly overload the power";
+            else hintMessage = powerOn ? "Power is ON" : "Press E to open power box";
         }
     }
 

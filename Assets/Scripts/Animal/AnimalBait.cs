@@ -25,6 +25,7 @@ public static class AnimalBait
             case "Chicken Feed": return Bit(AnimalBrain.Kind.Chicken);
             case "Fresh Hay": return Bit(AnimalBrain.Kind.Sheep) | Bit(AnimalBrain.Kind.Cow);
             case "Pig Slop": return Bit(AnimalBrain.Kind.Bunny) | Bit(AnimalBrain.Kind.Cow);
+            case "Carrot": return Bit(AnimalBrain.Kind.Bunny);
             case "Magic Whistle": return ~0;
             default: return 0;
         }

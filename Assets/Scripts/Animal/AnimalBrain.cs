@@ -37,9 +37,9 @@ public class AnimalBrain : MonoBehaviour
     public float walkSpeed = 1f;
     public float runSpeed = 4f;
     [Tooltip("Players closer than this make an escaped animal run away")]
-    public float scareDistance = 5f;
+    public float scareDistance = 1f;
     [Tooltip("Touch distance to catch it")]
-    public float catchDistance = 1.4f;
+    public float catchDistance = 2f;
 
     public State state { get; private set; } = State.Grazing;
 
@@ -309,12 +309,24 @@ public class AnimalBrain : MonoBehaviour
     // ---------------------------------------------------------------- returning
     void CheckCatch()
     {
+        foreach (var a in All)
+        {
+            if (a != this && a.state == State.Following)
+            {
+                return; 
+            }
+        }
+
         foreach (var p in Players())
         {
             if (Flat(p.t.position - transform.position).magnitude > catchDistance) continue;
-            leader = p.t; leaderIsLocal = p.local; leaderNet = p.local ? null : p.t.GetComponent<NetPlayer>();
-            followIndex = 0; foreach (var a in All) if (a != this && a.state == State.Following && a.leader == leader) followIndex++;
+            
+            leader = p.t; 
+            leaderIsLocal = p.local; 
+            leaderNet = p.local ? null : p.t.GetComponent<NetPlayer>();
+            followIndex = 0; 
             state = State.Following;
+            
             return;
         }
     }
@@ -473,13 +485,15 @@ public class AnimalBrain : MonoBehaviour
     bool Blocked(Vector3 dir)
     {
         Vector3 from = transform.position + Vector3.up * 0.4f;
-        foreach (var h in Physics.SphereCastAll(from, 0.3f, dir, 0.9f, ~0, QueryTriggerInteraction.Ignore))
+        foreach (var h in Physics.SphereCastAll(from, 0.2f, dir, 0.7f, ~0, QueryTriggerInteraction.Ignore))
         {
             if (h.collider.transform.IsChildOf(transform)) continue;
             if (h.collider.GetComponentInParent<AnimalBrain>() != null) continue;
             if (h.collider.GetComponentInParent<SpherePlayer>() != null || h.collider.GetComponentInParent<NetPlayer>() != null) continue;
             if (h.normal.y > 0.6f) continue;                                   // floor / gentle slope
             if (h.distance <= 0f) continue;                                    // already overlapping it (spawned in a bush/hutch): let it walk out
+            string objName = h.collider.gameObject.name.ToLower();             // (friend's fix) bushes / grass / the rabbit area never block
+            if (objName.Contains("bush") || objName.Contains("rabbit_area") || objName.Contains("grass")) continue;
             return true;
         }
         return false;
@@ -582,5 +596,21 @@ public class AnimalBrain : MonoBehaviour
             if (!a.hasNet) { a.transform.position = p; a.transform.rotation = Quaternion.Euler(0f, yaw, 0f); }
             a.netPos = p; a.netYaw = yaw; a.netSpeed = spd; a.state = st; a.hasNet = true;
         }
+    }
+
+    public void AttractedTo(Vector3 targetPosition)
+    {
+        // only animals already loose on the farm come over - never pull animals out of their pen
+        if (Puppet || (state != State.Roaming && state != State.Hiding)) return;
+
+        target = targetPosition;
+        retargetAt = Time.time + 10f; 
+        calmUntil = Time.time + 10f;
+        
+        if (state != State.Roaming)
+        {
+            state = State.Roaming;
+        }
+        
     }
 }

@@ -222,7 +222,7 @@ public class LobbyUI : MonoBehaviour
         if (await Net.Join(code))
         {
             joinMessage.text = $"Joined <b>{Net.Code}</b>! Waiting for the host to start...";
-            await System.Threading.Tasks.Task.Delay(1500);
+            await Awaitable.WaitForSecondsAsync(1.5f);   // works in web builds too (Task.Delay can hang there)
             if (joinPanel != null) joinPanel.SetActive(false);
             UpdateBanner();
         }
@@ -244,7 +244,7 @@ public class LobbyUI : MonoBehaviour
             if (!ok)
             {
                 if (partyStatus != null) partyStatus.text = $"Couldn't go online ({Net.LastError}). Starting solo...";
-                await System.Threading.Tasks.Task.Delay(1500);
+                await Awaitable.WaitForSecondsAsync(1.5f);   // works in web builds too (Task.Delay can hang there)
                 StartCoroutine(StartRoutine());
             }
             return;

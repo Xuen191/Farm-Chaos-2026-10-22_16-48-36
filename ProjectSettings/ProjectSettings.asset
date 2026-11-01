@@ -807,6 +807,7 @@ PlayerSettings:
   scriptingDefineSymbols:
     Android: SENTIS_ANALYTICS_ENABLED;APP_UI_EDITOR_ONLY
     Standalone: SENTIS_ANALYTICS_ENABLED;APP_UI_EDITOR_ONLY
+    iPhone: SENTIS_ANALYTICS_ENABLED;APP_UI_EDITOR_ONLY
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
@@ -913,11 +914,11 @@ PlayerSettings:
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
   enableDirectStorage: 0
-  cloudProjectId: 3f03e405-103e-4d50-be47-ad581c0b55fc
+  cloudProjectId: 75cfbde7-0b61-4e13-a852-b9007f979a69
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: My project (1)
-  organizationId: txchong191
+  organizationId: shereeeennew
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}

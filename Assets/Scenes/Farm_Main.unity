@@ -102249,7 +102249,7 @@ MonoBehaviour:
   bombRadius: 6
   bombForce: 9
   poofMaterial: {fileID: 2100000, guid: 17580e3a86e77fd4085e507e11a13482, type: 2}
-  meatyBonePrefab: {fileID: 919132149155446097, guid: 9256e6aed4ea75844926f2e1e5e02703, type: 3}
+  meatyBonePrefab: {fileID: 919132149155446097, guid: 251ab55a1544ac34f81f04cfafc5e52a, type: 3}
   meatThrowForce: 400
   whistleRadius: 15
   whistleCooldown: 20

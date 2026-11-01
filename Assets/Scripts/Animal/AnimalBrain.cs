@@ -34,7 +34,7 @@ public class AnimalBrain : MonoBehaviour
     [Tooltip("Players closer than this make an escaped animal run away")]
     public float scareDistance = 1f;
     [Tooltip("Touch distance to catch it")]
-    public float catchDistance = 1.4f;
+    public float catchDistance = 2f;
 
     public State state { get; private set; } = State.Grazing;
     public static readonly List<AnimalBrain> All = new List<AnimalBrain>();

@@ -3,18 +3,18 @@ using System.Collections.Generic;
 
 public class WolfAI : MonoBehaviour
 {
-    public enum State { Roaming, Eating, Fleeing }
+    public enum State { Roaming, Eating, Fleeing, Distracted }
     
     [Header("Settings")]
     public float moveSpeed = 3.5f;
-    public float roamRadius = 15f;       // 在出生點附近遊蕩的範圍
-    public float eatCooldown = 20f;      // 幾秒吃一隻動物
-    public int maxHitsBeforeFlee = 3;    // 被打幾次會逃跑
+    public float roamRadius = 15f;       
+    public float eatCooldown = 20f;      
+    public int maxHitsBeforeFlee = 3;    
 
     [Header("References")]
-    public Transform spawnPoint;         // 狼的出生點 (逃跑時會回去)
-    
-    private State currentState = State.Roaming;
+    public Transform spawnPoint;         
+
+    private Rigidbody rb;
     private Vector3 roamTarget;
     private float nextEatTime;
     private int hitCount = 0;
@@ -25,9 +25,15 @@ public class WolfAI : MonoBehaviour
 
     void Start()
     {
+        rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {rb.isKinematic = false; 
+rb.useGravity = true;   
+rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ; 
+            rb.interpolation = RigidbodyInterpolation.Interpolate; 
+        }
         if (spawnPoint == null) 
         {
-            // 如果沒有設定出生點，就把一開始的位置當作出生點
             GameObject sp = new GameObject("WolfSpawnPoint");
             sp.transform.position = transform.position;
             spawnPoint = sp.transform;
@@ -39,10 +45,9 @@ public class WolfAI : MonoBehaviour
 
     void Update()
     {
-        // 如果遊戲已經結束或 UI 打開，就不做事
         if (ProximityInteractor.UIOpen) return;
 
-        switch (currentState)
+        switch (CurrentState)
         {
             case State.Roaming:
                 DoRoaming();
@@ -53,21 +58,21 @@ public class WolfAI : MonoBehaviour
             case State.Fleeing:
                 DoFleeing();
                 break;
+            case State.Distracted:
+                DoDistracted();
+                break;
         }
     }
 
-    // ================= 狀態：遊蕩與找食物 =================
     void DoRoaming()
     {
-        // 1. 慢慢晃到隨機目標點
-        transform.position = Vector3.MoveTowards(transform.position, roamTarget, moveSpeed * 0.5f * Time.deltaTime);
+        MoveTowards(roamTarget, moveSpeed * 0.5f);
         
         if (Vector3.Distance(transform.position, roamTarget) < 1f)
         {
             roamTarget = GetRandomRoamPoint();
         }
 
-        // 2. 如果冷卻時間到了，就找一隻動物吃
         if (Time.time >= nextEatTime)
         {
             FindAnimalToEat();
@@ -82,12 +87,10 @@ public class WolfAI : MonoBehaviour
 
     void FindAnimalToEat()
     {
-        // 找出所有農場動物 (需要有 AnimalBrain 腳本)
         AnimalBrain[] animals = FindObjectsByType<AnimalBrain>(FindObjectsSortMode.None);
         
         if (animals.Length > 0)
         {
-            // 選最近的一隻
             AnimalBrain closest = null;
             float minDist = Mathf.Infinity;
 
@@ -104,57 +107,48 @@ public class WolfAI : MonoBehaviour
             if (closest != null)
             {
                 currentTargetAnimal = closest.transform;
-                currentState = State.Eating;
-                Debug.Log("🐺 狼盯上了一隻動物：" + currentTargetAnimal.name);
+                CurrentState = State.Eating;
             }
         }
     }
 
-    // ================= 狀態：追動物並吃掉 =================
     void DoEating()
     {
         if (currentTargetAnimal == null)
         {
-            // 動物不見了（可能被玩家救了），回去遊蕩
-            currentState = State.Roaming;
+            CurrentState = State.Roaming;
             return;
         }
 
-        // 追向動物
-        Vector3 dir = (currentTargetAnimal.position - transform.position).normalized;
-        dir.y = 0;
-        transform.position += dir * moveSpeed * Time.deltaTime;
-        if (dir.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(dir);
+        MoveTowards(currentTargetAnimal.position, moveSpeed);
 
-        // 如果抓到動物了
         if (Vector3.Distance(transform.position, currentTargetAnimal.position) < 1.5f)
         {
-            Debug.Log("🐺 狼吃掉了一隻動物！");
-            Destroy(currentTargetAnimal.gameObject); // 💡 吃掉動物 (也可以改成讓動物消失幾秒再重生)
             
-            nextEatTime = Time.time + eatCooldown; // 重置冷卻
-            currentState = State.Roaming;
+            Destroy(currentTargetAnimal.gameObject); 
+            
+            if (CoinWallet.Exists)
+            {
+                CoinWallet.Add(-10, "Wolf ate an animal");
+            }
+
+            nextEatTime = Time.time + eatCooldown; 
+            CurrentState = State.Roaming;
             roamTarget = GetRandomRoamPoint();
         }
     }
 
     void DoFleeing()
     {
-        Vector3 dir = (fleeTarget - transform.position).normalized;
-        dir.y = 0;
-        transform.position += dir * (moveSpeed * 2f) * Time.deltaTime; 
-        if (dir.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(dir);
+        MoveTowards(fleeTarget, moveSpeed * 2f);
 
-        // 💡 當狼回到出生點
         if (Vector3.Distance(transform.position, fleeTarget) < 1f)
         {
             hitCount = 0; 
             CurrentState = State.Roaming;
             nextEatTime = Time.time + eatCooldown;
             roamTarget = GetRandomRoamPoint();
-            Debug.Log("🐺 狼回到了出生點。");
 
-            // 💡 顯示勝利訊息，並重置警告狀態
             WolfWarningUI warningUI = FindObjectOfType<WolfWarningUI>();
             if (warningUI != null)
             {
@@ -164,33 +158,66 @@ public class WolfAI : MonoBehaviour
         }
     }
 
-    // 💡 這個函數會由 StickAttack 呼叫
     public void GetHit()
     {
         hitCount++;
-        Debug.Log($"🐺 狼被打了！({hitCount}/{maxHitsBeforeFlee})");
 
         if (hitCount >= maxHitsBeforeFlee)
         {
-            // 被打滿三次，開始逃跑
-            currentState = State.Fleeing;
+            CurrentState = State.Fleeing;
             fleeTarget = spawnPoint.position;
-            currentTargetAnimal = null; // 放棄追動物
-            Debug.Log("🐺 狼嚇跑了！正在逃回出生點！");
-        }
-        else
-        {
-            // 被打但還沒滿三次，可能會暫停一下或發出叫聲
+            currentTargetAnimal = null; 
         }
     }
 
-        // 💡 讓生成器呼叫，重置狼的狀態
     public void ResetWolf()
     {
         hitCount = 0;
         CurrentState = State.Roaming;
         nextEatTime = Time.time + eatCooldown;
         roamTarget = GetRandomRoamPoint();
-        Debug.Log("🐺 狼的狀態已重置！");
+    }
+
+    void MoveTowards(Vector3 targetPos, float speed)
+    {
+        Vector3 dir = (targetPos - transform.position).normalized;
+        dir.y = 0;
+        
+        Vector3 nextPos = transform.position + dir * speed * Time.deltaTime;
+
+        if (rb != null)
+            rb.MovePosition(nextPos);
+        else
+            transform.position = nextPos;
+
+        if (dir.sqrMagnitude > 0.01f) 
+            transform.rotation = Quaternion.LookRotation(dir);
+    }
+
+    public void DistractedByBone(Transform bone)
+    {
+        if (CurrentState == State.Fleeing) return;
+
+        currentTargetAnimal = bone; 
+        CurrentState = State.Distracted;
+    }
+
+    void DoDistracted()
+    {
+        if (currentTargetAnimal == null)
+        {
+            CurrentState = State.Roaming;
+            return;
+        }
+
+        MoveTowards(currentTargetAnimal.position, moveSpeed * 1.5f); 
+
+        if (Vector3.Distance(transform.position, currentTargetAnimal.position) < 1.5f)
+        {
+            Destroy(currentTargetAnimal.gameObject); 
+            nextEatTime = Time.time + eatCooldown;
+            CurrentState = State.Roaming;
+            roamTarget = GetRandomRoamPoint();
+        }
     }
 }

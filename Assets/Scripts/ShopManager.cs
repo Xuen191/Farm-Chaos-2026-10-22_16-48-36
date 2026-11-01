@@ -22,7 +22,7 @@ public class ShopManager : MonoBehaviour
     public Sprite iconMeatyBone;
     public Sprite iconNightVision;
     public Sprite iconMagicWhistle;
-    public Sprite iconPigBait;
+    public Sprite iconCarrot; 
     public Sprite iconFreshHay;
 
     [Header("Player Data")]
@@ -50,7 +50,6 @@ public class ShopManager : MonoBehaviour
             coinText.text = playerCoins.ToString(); 
     }
 
-    // 顯示商品詳情
     public void ShowItemDetails(Sprite icon, string name, string desc, int price)
     {
         currentPrice = price;
@@ -64,15 +63,46 @@ public class ShopManager : MonoBehaviour
 
         if (itemDetailPopup != null) itemDetailPopup.SetActive(true);
     }
+    
+    public void Btn_ClickChickenFeed() 
+    { 
+        ShowItemDetails(iconChickenFeed, "Chicken Feed", "Scatter these seeds to lure hungry chickens back to their pens.", 5); 
+    }
 
-    public void Btn_ClickChickenFeed() { ShowItemDetails(iconChickenFeed, "Chicken Feed", "Lure chickens back to the fence.", 5); }
-    public void Btn_ClickBomb() { ShowItemDetails(iconBomb, "Bomb", "Throw it to scare away the bad dog or herd animals.", 25); }
-    public void Btn_ClickCoffee() { ShowItemDetails(iconCoffee, "Coffee", "Increases movement speed by 50% for 10s.", 5); }
-    public void Btn_ClickMeatyBone() { ShowItemDetails(iconMeatyBone, "Meaty Bone", "Throw it to distract the bad dog.", 10); }
-    public void Btn_ClickNightVision() { ShowItemDetails(iconNightVision, "Night Vision Goggles", "See clearly in the dark.", 20); }
-    public void Btn_ClickMagicWhistle() { ShowItemDetails(iconMagicWhistle, "Magic Whistle", "Attract nearby animals with sound.", 20); }
-    public void Btn_ClickPigBait() { ShowItemDetails(iconPigBait, "Pig Slop", "Delicious feed to lure pigs.", 5); }
-    public void Btn_ClickFreshHay() { ShowItemDetails(iconFreshHay, "Fresh Hay", "Fresh hay, cow's or sheep's favorite.", 5); }
+    public void Btn_ClickCarrot() 
+    { 
+        ShowItemDetails(iconCarrot, "Carrot", "A crunchy treat! Bunnies will hop straight towards it.", 5); 
+    }
+
+    public void Btn_ClickFreshHay() 
+    { 
+        ShowItemDetails(iconFreshHay, "Fresh Hay", "Sweet-smelling grass. Sheep and cows can't resist it.", 5); 
+    }
+
+    public void Btn_ClickCoffee() 
+    { 
+        ShowItemDetails(iconCoffee, "Coffee", "Drink up! Increases your rolling speed by 50% for 10 seconds.", 10); 
+    }
+
+    public void Btn_ClickBomb() 
+    { 
+        ShowItemDetails(iconBomb, "Bomb", "Boom! Scares away the wolf instantly and knocks animals out of the way.", 25); 
+    }
+
+    public void Btn_ClickNightVision() 
+    { 
+        ShowItemDetails(iconNightVision, "Night Vision Goggles", "Turns the darkest night into a bright green day for 25 seconds.", 20); 
+    }
+
+    public void Btn_ClickMagicWhistle() 
+    { 
+        ShowItemDetails(iconMagicWhistle, "Magic Whistle", "Blow it to instantly pull all nearby animals towards you. Has a 20s cooldown.", 20); 
+    }
+
+    public void Btn_ClickMeatyBone() 
+    { 
+        ShowItemDetails(iconMeatyBone, "Meaty Bone", "Throw this juicy bone to distract the wolf and stop it from eating your animals.", 10); 
+    }
 
     // ==========================================
 
@@ -108,11 +138,6 @@ public class ShopManager : MonoBehaviour
             }
 
             ClosePopup();
-        }
-        else
-        {
-            Debug.Log("❌ 金幣不足，無法購買！");
-            // 你可以在這裡讓價格文字變紅，或者播放錯誤音效
         }
     }
 

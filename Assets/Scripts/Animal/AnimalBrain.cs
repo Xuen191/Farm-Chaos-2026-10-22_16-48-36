@@ -32,7 +32,7 @@ public class AnimalBrain : MonoBehaviour
     public float walkSpeed = 1f;
     public float runSpeed = 4f;
     [Tooltip("Players closer than this make an escaped animal run away")]
-    public float scareDistance = 5f;
+    public float scareDistance = 1f;
     [Tooltip("Touch distance to catch it")]
     public float catchDistance = 1.4f;
 
@@ -120,11 +120,14 @@ public class AnimalBrain : MonoBehaviour
             {
                 CheckCatch();
                 if (state != State.Roaming) break;
+
                 var threat = NearestPlayer(out float d);
                 if (threat != null && d < scareDistance)
-                {   // scurry away (chickens zig-zag)
+                {   
                     Vector3 away = Flat(transform.position - threat.position).normalized;
-                    if (kind == Kind.Chicken || kind == Kind.Bunny) away = Quaternion.Euler(0, Mathf.Sin(Time.time * 6f + seed) * 50f, 0) * away;
+                    if (kind == Kind.Chicken || kind == Kind.Bunny) 
+                        away = Quaternion.Euler(0, Mathf.Sin(Time.time * 6f + seed) * 50f, 0) * away;
+                    
                     MoveTowards(transform.position + away * 3f, runSpeed, dt);
                 }
                 else
@@ -138,7 +141,7 @@ public class AnimalBrain : MonoBehaviour
             case State.Following:
             {
                 if (leader == null) { state = State.Roaming; NewRoamTarget(); break; }
-                Vector3 spot = leader.position - Flat(leader.forward).normalized * (1.3f + followIndex * 1.1f);
+                Vector3 spot = leader.position - Flat(leader.forward).normalized * 1.5f;
                 float dist = Flat(spot - transform.position).magnitude;
                 MoveTowards(spot, Mathf.Clamp(dist * 2.5f, 0f, runSpeed * 1.6f), dt, stopAt: 0.3f);
                 if (stuckFor > 1.2f && dist > 2.5f) StartHop(transform.position + Flat(spot - transform.position).normalized * 2.2f);   // stuck behind a fence: hop over it
@@ -157,15 +160,26 @@ public class AnimalBrain : MonoBehaviour
         Animate(dt);
     }
 
-    // ---------------------------------------------------------------- catching & returning
     void CheckCatch()
     {
+        foreach (var a in All)
+        {
+            if (a != this && a.state == State.Following)
+            {
+                return; 
+            }
+        }
+
         foreach (var p in Players())
         {
             if (Flat(p.t.position - transform.position).magnitude > catchDistance) continue;
-            leader = p.t; leaderIsLocal = p.local; leaderNet = p.local ? null : p.t.GetComponent<NetPlayer>();
-            followIndex = 0; foreach (var a in All) if (a != this && a.state == State.Following && a.leader == leader) followIndex++;
+            
+            leader = p.t; 
+            leaderIsLocal = p.local; 
+            leaderNet = p.local ? null : p.t.GetComponent<NetPlayer>();
+            followIndex = 0; 
             state = State.Following;
+            
             return;
         }
     }
@@ -318,12 +332,17 @@ public class AnimalBrain : MonoBehaviour
     bool Blocked(Vector3 dir)
     {
         Vector3 from = transform.position + Vector3.up * 0.4f;
-        foreach (var h in Physics.SphereCastAll(from, 0.3f, dir, 0.9f, ~0, QueryTriggerInteraction.Ignore))
+        foreach (var h in Physics.SphereCastAll(from, 0.2f, dir, 0.7f, ~0, QueryTriggerInteraction.Ignore))
         {
             if (h.collider.transform.IsChildOf(transform)) continue;
             if (h.collider.GetComponentInParent<AnimalBrain>() != null) continue;
             if (h.collider.GetComponentInParent<SpherePlayer>() != null || h.collider.GetComponentInParent<NetPlayer>() != null) continue;
-            if (h.normal.y > 0.6f) continue;                                   // floor / gentle slope
+            if (h.normal.y > 0.6f) continue;     
+            
+            string objName = h.collider.gameObject.name.ToLower();
+            if (objName.Contains("bush") || objName.Contains("rabbit_area") || objName.Contains("grass")) 
+                continue;
+
             return true;
         }
         return false;
@@ -426,5 +445,20 @@ public class AnimalBrain : MonoBehaviour
             if (!a.hasNet) { a.transform.position = p; a.transform.rotation = Quaternion.Euler(0f, yaw, 0f); }
             a.netPos = p; a.netYaw = yaw; a.netSpeed = spd; a.state = st; a.hasNet = true;
         }
+    }
+
+    public void AttractedTo(Vector3 targetPosition)
+    {
+        if (state == State.Following || state == State.Escaping) return;
+
+        target = targetPosition;
+        retargetAt = Time.time + 10f; 
+        calmUntil = Time.time + 10f;
+        
+        if (state != State.Roaming)
+        {
+            state = State.Roaming;
+        }
+        
     }
 }

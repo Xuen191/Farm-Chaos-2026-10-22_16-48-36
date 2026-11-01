@@ -1,15 +1,18 @@
-// Farm Chaos - what each shop item does when you use it from the item bar.
 using System.Collections;
-using System.Linq;
+using System.Collections.Generic; 
 using UnityEngine;
 
 public class ItemEffects : MonoBehaviour
 {
     [Header("Baits (Food)")]
     public GameObject chickenFeedPrefab;
-    public GameObject pigSlopPrefab;
+    public GameObject carrotPrefab; 
     public GameObject freshHayPrefab;
     public float foodThrowForce = 200f;
+    
+    [Header("Bait Settings")]
+    public int maxAnimalsAttracted = 3; 
+    public float baitRadius = 15f;      
 
     [Header("Coffee")]
     public float coffeeSpeedBoost = 1.5f;
@@ -50,18 +53,12 @@ public class ItemEffects : MonoBehaviour
 
     SpherePlayer Player => FindAnyObjectByType<SpherePlayer>();
 
-    /// <summary>Use an item. message = short text to show; returns whether it got used up.</summary>
     public bool Use(string item, out string message)
     {
         var p = Player;
-        
         message = "Can't use that here."; 
         
-        if (p == null) 
-        { 
-            message = "No player!"; 
-            return false; 
-        }
+        if (p == null) { message = "No player!"; return false; }
 
         switch (item)
         {
@@ -86,10 +83,10 @@ public class ItemEffects : MonoBehaviour
                 message = "Dropped chicken feed!";
                 return true;
 
-            case "Pig Slop":
+            case "Carrot":
                 if (foodDropSound != null) AudioSource.PlayClipAtPoint(foodDropSound, p.transform.position);
-                ThrowFood(pigSlopPrefab, p, "Pig Slop");
-                message = "Dropped pig slop!";
+                ThrowFood(carrotPrefab, p, "Carrot");
+                message = "Dropped carrot!";
                 return true;
 
             case "Fresh Hay":
@@ -100,6 +97,33 @@ public class ItemEffects : MonoBehaviour
 
             case "Meaty Bone":
                 if (meatDropSound != null) AudioSource.PlayClipAtPoint(meatDropSound, p.transform.position);
+                
+                if (meatyBonePrefab != null)
+                {
+                    var cam = Camera.main;
+                    Vector3 fwd = cam != null ? Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized : p.transform.forward;
+                    Vector3 spawnPos = p.transform.position + fwd * 2f + Vector3.up * 0.5f;
+                    
+                    GameObject bone = Instantiate(meatyBonePrefab, spawnPos, Quaternion.identity);
+                    
+                    Rigidbody rb = bone.GetComponent<Rigidbody>();
+                    if (rb != null)
+                    {
+                        Vector3 throwDir = (fwd + Vector3.up * 0.3f).normalized;
+                        rb.AddForce(throwDir * meatThrowForce);
+                    }
+
+                    DroppedFood pickupScript = bone.AddComponent<DroppedFood>();
+                    pickupScript.itemName = "Meaty Bone"; 
+                    if (bone.GetComponent<Collider>() == null) bone.AddComponent<BoxCollider>();
+
+                    WolfAI[] wolves = FindObjectsByType<WolfAI>(FindObjectsSortMode.None);
+                    foreach (var wolf in wolves)
+                    {
+                        wolf.DistractedByBone(bone.transform);
+                    }
+                }
+                
                 message = "Dropped meaty bone!";
                 return true;
 
@@ -115,53 +139,95 @@ public class ItemEffects : MonoBehaviour
                 
                 if (whistleSound != null) AudioSource.PlayClipAtPoint(whistleSound, p.transform.position);
 
-                Collider[] animals = Physics.OverlapSphere(p.transform.position, whistleRadius, LayerMask.GetMask("Animal"));
+                AnimalBrain[] allAnimals = FindObjectsByType<AnimalBrain>(FindObjectsSortMode.None);
                 
-                if (animals.Length == 0)
+                if (allAnimals.Length == 0)
                 {
-                    message = "Whistle blown, but no animals nearby!";
+                    message = "Whistle blown, but the farm is empty!";
                 }
                 else
                 {
                     string attractedAnimals = "";
-                    foreach (var animal in animals)
+                    int count = 0;
+                    
+                    foreach (var animal in allAnimals)
                     {
-                        Debug.Log("動物被口哨吸引了：" + animal.name);
+                        animal.AttractedTo(p.transform.position); 
                         
                         if (attractedAnimals == "") attractedAnimals = animal.name;
                         else attractedAnimals += ", " + animal.name;
+                        
+                        count++;
                     }
-
-                    message = "Attracted: " + attractedAnimals;
+                    message = "Whistle blown! Attracted " + count + " animals.";
                 }
-
                 return false; 
 
             case "Rope":
-                if (p == null) { message = "No player!"; return false; }
-                
                 RopeAbility rope = p.GetComponent<RopeAbility>();
                 if (rope != null)
                 {
                     string errorMsg;
                     bool success = rope.TryTieSpy(out errorMsg); 
                     
-                    if (success)
-                    {
-                        message = "Tied the spy!"; 
-                        return true;
-                    }
-                    else
-                    {
-                        message = errorMsg;
-                        return false;
-                    }
+                    if (success) { message = "Tied the spy!"; return true; }
+                    else { message = errorMsg; return false; }
                 }
                 message = "Can't use rope here.";
                 return false;
 
             default:
                 return false;
+        }
+    }
+
+    private void ThrowFood(GameObject prefab, SpherePlayer p, string itemName)
+    {
+        if (prefab == null) return;
+
+        var cam = Camera.main;
+        Vector3 fwd = cam != null ? Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized : p.transform.forward;
+        Vector3 spawnPos = p.transform.position + fwd * 2f + Vector3.up * 0.5f;
+        
+        GameObject food = Instantiate(prefab, spawnPos, Quaternion.identity);
+        
+        Rigidbody rb = food.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            Vector3 throwDir = (fwd + Vector3.up * 0.3f).normalized;
+            rb.AddForce(throwDir * foodThrowForce);
+        }
+
+        AttractAnimals(spawnPos, itemName);
+
+        DroppedFood pickupScript = food.AddComponent<DroppedFood>();
+        pickupScript.itemName = itemName;
+
+        if (food.GetComponent<Collider>() == null) food.AddComponent<BoxCollider>();
+    }
+
+    private void AttractAnimals(Vector3 position, string foodType)
+    {
+        AnimalBrain[] allAnimals = FindObjectsByType<AnimalBrain>(FindObjectsSortMode.None);
+        
+        int count = 0;
+        foreach (var animal in allAnimals)
+        {
+
+            if (foodType == "Carrot" && animal.kind != AnimalBrain.Kind.Bunny) continue;
+            if (foodType == "Chicken Feed" && animal.kind != AnimalBrain.Kind.Chicken) continue;
+            if (foodType == "Fresh Hay" && animal.kind != AnimalBrain.Kind.Sheep && animal.kind != AnimalBrain.Kind.Cow) continue;
+
+            if (count >= maxAnimalsAttracted) break; 
+
+            animal.AttractedTo(position);
+            
+            count++;
+        }
+
+        if (count == 0)
+        {
+            Debug.LogWarning("⚠️ 找不到任何動物可以吸引！");
         }
     }
 
@@ -197,15 +263,11 @@ public class ItemEffects : MonoBehaviour
         while (Time.time < goggleUntil)
         {
             float timeLeft = goggleUntil - Time.time;
-            
-
             if (nightVisionTimerText != null)
             {
                 nightVisionTimerText.text = "Night Vision: " + Mathf.CeilToInt(timeLeft) + "s";
-                
                 if (timeLeft <= 5f) nightVisionTimerText.color = Color.red;
             }
-
             yield return null;
         }
 
@@ -227,6 +289,17 @@ public class ItemEffects : MonoBehaviour
             float scale = rb.GetComponent<SpherePlayer>() != null ? 0.35f : 1f;
             rb.AddExplosionForce(bombForce * scale, at, bombRadius, 1.2f, ForceMode.VelocityChange);
         }
+
+        Collider[] hitEnemies = Physics.OverlapSphere(at, bombRadius + 1f);
+        foreach (var enemy in hitEnemies)
+        {
+            WolfAI wolf = enemy.GetComponent<WolfAI>();
+            if (wolf != null)
+            {
+                Destroy(wolf.gameObject); 
+            }
+        }
+
         StartCoroutine(Poof(at));
     }
 
@@ -259,32 +332,5 @@ public class ItemEffects : MonoBehaviour
         }
         Destroy(flash.gameObject);
         if (puff != null) Destroy(puff);
-    }
-
-    private void ThrowFood(GameObject prefab, SpherePlayer p, string itemName)
-    {
-        if (prefab == null) return;
-
-        var cam = Camera.main;
-        Vector3 fwd = cam != null ? Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized : p.transform.forward;
-
-        Vector3 spawnPos = p.transform.position + fwd * 1f + Vector3.up * 0.5f;
-        
-        GameObject food = Instantiate(prefab, spawnPos, Quaternion.identity);
-        
-        Rigidbody rb = food.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            Vector3 throwDir = (fwd + Vector3.up * 0.3f).normalized;
-            rb.AddForce(throwDir * foodThrowForce);
-        }
-
-        DroppedFood pickupScript = food.AddComponent<DroppedFood>();
-        pickupScript.itemName = itemName;
-
-        if (food.GetComponent<Collider>() == null)
-        {
-            food.AddComponent<BoxCollider>();
-        }
     }
 }
